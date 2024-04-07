@@ -1,7 +1,7 @@
 X clone the repo
 X create main.py
 - in main.py, make it import the audio data from MAESTRO, and see about loading it into the noteseq python package from google's magenta
--- download the dataset into 324-project/data, and load from that folder in main.py
+X- download the dataset into 324-project/data, and load from that folder in main.py
 - see about reading over our documents and getting caught up with what we are using precisely
 -- if it is a transformer, see about torch and transformers, and if we can get starter code for that working (how to take in the tokens, spit out the tokens, training etc... there should be a robust tutorial on transformers in torch somewhere)
 - text in gc with my results 
