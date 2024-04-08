@@ -1,5 +1,6 @@
 import note_seq, pretty_midi
 from note_seq import midi_io
+import numpy as np
 
 if __name__ == '__main__':
     data_path = 'data/maestro-v3.0.0'
@@ -7,4 +8,20 @@ if __name__ == '__main__':
     midi_data = pretty_midi.PrettyMIDI(data_path + test_path)
     midi_seq = midi_io.midi_to_note_sequence(midi_data)
 
-    print(midi_seq.notes)
+    ##print(midi_seq.notes)
+
+    # Converet notes into a an embedding that can be interpreted by a transformer model:
+
+    notes_array = np.array(midi_seq.notes)
+
+    input_vector = np.zeros((len(notes_array), 3))
+
+    for i in range(len(notes_array)):
+        input_vector[i][0] = notes_array[i].start_time
+        input_vector[i][1] = notes_array[i].end_time
+        ##input_vector[i][0] = notes_array[i].end_time - notes_array[i].start_time
+        ##input_vector[i][1] = False # Is not a pause
+        input_vector[i][2] = notes_array[i].pitch
+        input_vector[i][3] = notes_array[i].velocity
+
+    print(input_vector)
