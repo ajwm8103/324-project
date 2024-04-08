@@ -7,4 +7,4 @@ if __name__ == '__main__':
     midi_data = pretty_midi.PrettyMIDI(data_path + test_path)
     midi_seq = midi_io.midi_to_note_sequence(midi_data)
 
-    print(midi_seq)
+    print(midi_seq.notes)
