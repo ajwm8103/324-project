@@ -2,6 +2,8 @@ import argparse
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
 import torch.nn.functional as F
 
 from tqdm import tqdm
@@ -9,14 +11,39 @@ from tqdm import tqdm
 import note_seq, pretty_midi
 from note_seq import midi_io
 
+# Dummy dataset that returns random src and tgt tensors
+class RandomDataset(Dataset):
+    def __init__(self, data_size, seq_len, feature_size):
+        """
+        Args:
+            data_size: Total number of samples to generate
+            seq_len: Length of each sequence
+            feature_size: Size of each feature vector
+        """
+        self.data_size = data_size
+        self.seq_len = seq_len
+        self.feature_size = feature_size
+
+    def __len__(self):
+        return self.data_size
+
+    def __getitem__(self, idx):
+        src = torch.rand(self.seq_len, self.feature_size)
+        tgt = torch.rand(self.seq_len, self.feature_size)
+        return src, tgt
+
 def train(args):
     # Get train data
     train_data = torch.rand((100, 32, 512))
+    dataset = RandomDataset(args.data_size, args.seq_len, args.feature_size)
 
     # Create dataloader
-    train_loader = torch.utils.data.DataLoader(train_data,
-                                               batch_size=args.batch_size,
-                                               shuffle=True) # reshuffle minibatches every epoch
+    train_loader = DataLoader(train_data,
+                            batch_size=args.batch_size,
+                            shuffle=True) # reshuffle minibatches every epoch
+
+    
+
 
     # Create model (Transformer)
     model = nn.Transformer(nhead=16, num_encoder_layers=12)
@@ -26,13 +53,13 @@ def train(args):
 
     # Create optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     # Train loop
     iters, train_loss, train_acc, val_acc = [], [], [], []
     iter_count = 0 # count the number of iterations that has passed
 
-    for epoch in tqdm(range(args.num_epochs)):
+    for epoch in tqdm(range(args.epochs)):
         model.train()
 
         for i, (src, tgt) in enumerate(train_loader):
@@ -72,11 +99,20 @@ def generate(model, src, max_len=20):
             outputs.append(output[-1, :, :].unsqueeze(0))
         return torch.cat(outputs, dim=0)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    
+def main():
+    parser = argparse.ArgumentParser(description='Transformer Training Script')
     parser.add_argument("-v", "--verbose", action="store_true",
                     help="increase output verbosity")
+    parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
+    parser.add_argument('--data_size', type=int, default=1000, help='Size of the dataset')
+    parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')
+    parser.add_argument('--feature_size', type=int, default=512, help='Size of feature vector')
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--nhead', type=int, default=16, help='Number of heads in the transformer model')
+    parser.add_argument('--num_encoder_layers', type=int, default=12, help='Number of encoder layers in the transformer model')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+
+    args = parser.parse_args()
                     
 
     args = parser.parse_args()
@@ -89,3 +125,6 @@ if __name__ == '__main__':
         print("not verbose")
     
     train(args)
+
+if __name__ == '__main__':
+    main()
