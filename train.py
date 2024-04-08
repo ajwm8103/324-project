@@ -13,29 +13,30 @@ from note_seq import midi_io
 
 # Dummy dataset that returns random src and tgt tensors
 class RandomDataset(Dataset):
-    def __init__(self, data_size, seq_len, feature_size):
+    def __init__(self, data_size, seq_len, num_classes):
         """
         Args:
             data_size: Total number of samples to generate
             seq_len: Length of each sequence
-            feature_size: Size of each feature vector
+            num_classes: Vocab size
         """
         self.data_size = data_size
         self.seq_len = seq_len
-        self.feature_size = feature_size
+        self.num_classes = num_classes
 
     def __len__(self):
         return self.data_size
 
     def __getitem__(self, idx):
-        src = torch.rand(self.seq_len, self.feature_size)
-        tgt = torch.rand(self.seq_len, self.feature_size)
+        src = torch.rand(self.seq_len, self.num_classes)
+        #tgt = torch.rand(self.seq_len, self.num_classes)
+        tgt = torch.randint(0, self.num_classes, (self.seq_len,))
         return src, tgt
 
 def train(args):
     # Get train data
-    train_data = torch.rand((100, 32, 512))
-    dataset = RandomDataset(args.data_size, args.seq_len, args.feature_size)
+    #train_data = torch.rand((100, 32, 512))
+    train_data = RandomDataset(args.data_size, args.seq_len, args.num_classes)
 
     # Create dataloader
     train_loader = DataLoader(train_data,
@@ -46,10 +47,12 @@ def train(args):
 
 
     # Create model (Transformer)
-    model = nn.Transformer(nhead=16, num_encoder_layers=12)
-    src = torch.rand((10, 32, 512))
-    tgt = torch.rand((20, 32, 512))
-    out = model(src, tgt)
+    model = nn.Transformer(d_model=args.num_classes, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    #src = torch.rand((10, 32, 512))
+    #tgt = torch.rand((20, 32, 512))
+    #out = model(src, tgt)
 
     # Create optimizer
     criterion = nn.CrossEntropyLoss()
@@ -71,7 +74,12 @@ def train(args):
             # Compute loss; we'll need to adjust dimensions for CrossEntropy
             tgt_out = tgt[1:, :]  # Shifted by one for the expected output
 
-            loss = criterion(outputs.view(-1, outputs.size(-1)), tgt_out.reshape(-1))
+            #loss = criterion(outputs.view(-1, outputs.size(-1)), tgt_out.reshape(-1))
+            # Assuming outputs is (sequence_length, batch_size, num_classes)
+            # and tgt_out is (sequence_length, batch_size) with class indices
+            print('outputs', outputs.shape, 'tgt_out', tgt_out.shape)
+            loss = criterion(outputs.view(-1, outputs.size(-1)), tgt_out.view(-1))
+
             loss.backward()
 
             optimizer.step()
@@ -106,7 +114,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
     parser.add_argument('--data_size', type=int, default=1000, help='Size of the dataset')
     parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')
-    parser.add_argument('--feature_size', type=int, default=512, help='Size of feature vector')
+    parser.add_argument('--num_classes', type=int, default=512, help='Size of feature vector')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
     parser.add_argument('--nhead', type=int, default=16, help='Number of heads in the transformer model')
     parser.add_argument('--num_encoder_layers', type=int, default=12, help='Number of encoder layers in the transformer model')
