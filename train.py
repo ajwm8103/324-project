@@ -49,7 +49,10 @@ def main():
 
     for epoch in range(args.epochs):
         model.train()
-        for src, tgt in tqdm(dataloader):
+        counter = 0
+        t = tqdm(dataloader, desc='Loss: N/A')
+        for src, tgt in t:
+            
             src, tgt = src.to(device), tgt.to(device)
             optimizer.zero_grad()
             output = model(src, tgt)
@@ -57,6 +60,12 @@ def main():
             loss.backward()
             optimizer.step()
             #print(loss.item())
+            t.set_description(f'Loss: {loss.item()}')
+            t.refresh()
+            counter += 1
+
+            if counter > 10000:
+                break
 
     # Save our model:
     torch.save(model.state_dict(), 'transformer_midi_model.pth')

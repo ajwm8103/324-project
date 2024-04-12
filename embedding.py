@@ -31,6 +31,11 @@ def load_embedding_from_pickle(args):
 
     return data_embedding
 
+def test():
+    
+    encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
+    encoder_decoder.encode()
+
 def embedding(midi_seq):
     # Convert notes into an embedding for a transformer model:
     notes_array = np.array(midi_seq.notes)
@@ -106,15 +111,18 @@ def decode_embedding(embedding):
     return notes_array
 
 
-
 if __name__ == '__main__':
     from data_loader import load_file
     data_path = 'data/maestro-v3.0.0'
     test_path = '/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
     
+
     midi_seq = load_file(data_path + test_path)
+    encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
+    processed = encoder_decoder.encode(midi_seq)
+    print(processed)
     ##print(midi_seq)
-    input_vector = embedding(midi_seq)
+    #input_vector = embedding(midi_seq)
 
     # Only 3 Decimals:
     ##np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
