@@ -11,9 +11,12 @@ from embedding import load_embedding_from_pickle
 import numpy as np
 from train import MidiDataset, fetch_arguments
 from embedding import embedding_to_midi
+import random
+
+
 
 # Inside your generate_sequence function, adjust for batch_first if needed
-def generate_sequence(model, src, steps=128, seq_length=10):
+def generate_sequence(model, src, steps=128*2, seq_length=1000):
     model.eval()
     generated = src
     for step in range(steps):
@@ -53,9 +56,17 @@ optimizer = optim.Adam(model.parameters(), lr=args.lr)
 # Load the model:
 model.load_state_dict(torch.load('transformer_midi_model.pth'))
 
-# Generate a longer sequence
+# # Generate a longer sequence
 src, tgt = next(iter(dataloader))
 src, tgt = src.to(device), tgt.to(device)
+
+# # Load all initial sequences into a list (if not too large, or adjust accordingly)
+# initial_sequences = list(dataloader)
+
+# # Select a random initial sequence
+# random_index = random.randint(0, len(initial_sequences) - 1)
+# src, tgt = initial_sequences[random_index]
+# src, tgt = src.to(device), tgt.to(device)
 
 # Before starting the generation, check input dimensions
 print("Input src shape:", src.shape)
@@ -66,4 +77,4 @@ if src.nelement() == 0:
 generated_seq = generate_sequence(model, src, steps=50)  # Adjust steps for desired length
 
 # Convert output to MIDI
-embedding_to_midi(generated_seq, 'long_output.mid')
+embedding_to_midi(generated_seq, 'long_output_1000seqlen.mid')
