@@ -20,7 +20,7 @@ def fetch_arguments():
     parser.add_argument('--train_count', type=int, default=10000, help='Number of training iterations. Each epoch is about 480000 data points')
     parser.add_argument('--seq_len', type=int, default=64, help='Sequence length')
     parser.add_argument('--stride_length', type=int, default=64, help='Stride length')
-    parser.add_argument('--batch_size', type=int, default=512, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--nhead', type=int, default=5, help='Number of heads in the transformer model')
     parser.add_argument('--num_encoder_layers', type=int, default=12, help='Number of encoder layers in the transformer model') # TODO: Check this
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
@@ -37,12 +37,12 @@ class MidiDataset(Dataset):
     def __init__(self, data, seq_len, args, stride_length=100):
         self.seq_len = seq_len
         # slice the data into size seq_len using a sliding window:
-        data_sliced = []
+        self.data = []
         for song in data:
             data_slice = np.array([song[i:i + seq_len + 1, :] for i in range(0, len(song) - seq_len, stride_length)])
-            data_sliced.extend(data_slice)
-        data_sliced = np.array(data_sliced)
-        self.data = torch.tensor(data_sliced)
+            self.data.extend(data_slice)
+        self.data = np.array(self.data)
+        self.data = torch.tensor(self.data)
         args.log("Data shape:", self.data.shape)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -89,7 +89,7 @@ def main():
     with torch.no_grad():
         src, tgt = next(iter(dataloader))
         src, tgt = src.to(device), tgt.to(device)
-        output = model(src, tgt[:-1])  # tgt[:-1] used as target input to predict tgt[1:]
+        output = model(src, tgt)  # tgt[:-1] used as target input to predict tgt[1:]
         print("Sample input:", src[0])
         print("Model output:", output[0])
         print("True target:", tgt[1][0])

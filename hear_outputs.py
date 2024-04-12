@@ -53,7 +53,7 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
 # Load the model:
-model.load_state_dict(torch.load('transformer_midi_model.pth'))
+model.load_state_dict(torch.load('model_1.pth'))
 
 # # # Generate a longer sequence
 src, tgt = next(iter(dataloader))

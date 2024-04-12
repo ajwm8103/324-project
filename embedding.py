@@ -31,7 +31,7 @@ def load_embedding_from_pickle(args):
         args.log("Data Embedding saved to pickle file")
 
     return data_embedding
-
+'''
 def embed(note_seqs, mode='train'):
     # note_seqs, list of NoteSequence
     stretch_factors = [0.95, 0.975, 1.0, 1.025, 1.05] if mode == 'train' else [1.0]
@@ -91,7 +91,7 @@ def embed(note_seqs, mode='train'):
         
     #encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
     #encoder_decoder.encode()
-
+'''
 def embedding(midi_seq):
     # Convert notes into an embedding for a transformer model:
     notes_array = np.array(midi_seq.notes)
@@ -136,7 +136,7 @@ def embedding_to_midi(embedding, filename='output.mid'):
     midi_file.write(filename)
 
 
-def decode_embedding(embedding):
+def decode_embedding_discritized(embedding):
     notes_array = []
     start_time_previous_note = 0
     # print("Embedding shape:", embedding.shape)  # Verify the shape of embedding
@@ -175,11 +175,11 @@ if __name__ == '__main__':
     midi_seq = load_file(data_path + test_path)
     #print(midi_seq)
 
-    output = embed([midi_seq])
+    #output = embed([midi_seq])
 
     
     ##print(midi_seq)
-    #input_vector = embedding(midi_seq)
+    input_vector = embedding(midi_seq)
 
     # Only 3 Decimals:
     ##np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
