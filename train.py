@@ -33,8 +33,6 @@ class MidiDataset(Dataset):
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
 
-
-
 def main():
     args = fetch_arguments()
 
@@ -85,6 +83,7 @@ def fetch_arguments():
     parser.add_argument('--nhead', type=int, default=5, help='Number of heads in the transformer model')
     parser.add_argument('--num_encoder_layers', type=int, default=12, help='Number of encoder layers in the transformer model')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    parser.add_argument('--data', type=str, default='data', help='Name of data')
 
     args = parser.parse_args()
 
