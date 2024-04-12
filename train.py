@@ -19,6 +19,7 @@ def fetch_arguments():
     parser.add_argument("-t", "--tiny", action="store_true", help="Make dataset tiny")
     parser.add_argument('--train_count', type=int, default=10000, help='Number of training iterations. Each epoch is about 480000 data points')
     parser.add_argument('--seq_len', type=int, default=64, help='Sequence length')
+    parser.add_argument('--stride_length', type=int, default=64, help='Stride length')
     parser.add_argument('--batch_size', type=int, default=512, help='Batch size')
     parser.add_argument('--nhead', type=int, default=5, help='Number of heads in the transformer model')
     parser.add_argument('--num_encoder_layers', type=int, default=12, help='Number of encoder layers in the transformer model') # TODO: Check this
@@ -32,7 +33,7 @@ def fetch_arguments():
 
 class MidiDataset(Dataset):
     # In order to capture the elements of music I am combining all tracks together. This means that the Transformer model will loose the "uniqueness" of any individual song.
-    def __init__(self, data, seq_len, args, stride_length=1):
+    def __init__(self, data, seq_len, args, stride_length=100):
         self.seq_len = seq_len
         # slice the data into size seq_len using a sliding window:
         data_sliced = []
@@ -56,7 +57,7 @@ def main():
     args = fetch_arguments()
 
     data_embedding = load_embedding_from_pickle(args)
-    dataset = MidiDataset(data_embedding, args.seq_len, args)
+    dataset = MidiDataset(data_embedding, args.seq_len, args, args.stride_length)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
