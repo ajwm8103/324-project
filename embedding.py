@@ -32,23 +32,30 @@ def load_embedding_from_pickle(args):
     return data_embedding
 
 def embedding(midi_seq):
-    # Converet notes into a an embedding that can be interpreted by a transformer model:
+    # Convert notes into an embedding for a transformer model:
     notes_array = np.array(midi_seq.notes)
+
+    # Determine the maximum pitch and velocity for normalization
+    max_pitch = 127
+    max_velocity = 127
+    # You might want to determine these dynamically from the dataset
+    max_duration = 10.0  # Assuming the longest note duration in seconds
+    max_interval = 10.0  # Assuming the longest interval between notes in seconds
 
     input_vector = np.zeros((len(notes_array), 5))
 
-    input_vector[0][0] = notes_array[0].end_time - notes_array[0].start_time
-    input_vector[0][1] = 0 # Time between notes
+    input_vector[0][0] = (notes_array[0].end_time - notes_array[0].start_time) / max_duration
+    input_vector[0][1] = 0  # Time between notes
     input_vector[0][2] = 0
-    input_vector[0][3] = notes_array[0].pitch
-    input_vector[0][4] = notes_array[0].velocity
+    input_vector[0][3] = notes_array[0].pitch / max_pitch
+    input_vector[0][4] = notes_array[0].velocity / max_velocity
 
     for i in range(1, len(notes_array)):
-        input_vector[i][0] = notes_array[i].end_time - notes_array[i].start_time # Duration of note
-        input_vector[i][1] = notes_array[i].start_time - notes_array[i-1].end_time # Time between notes
-        input_vector[i][2] = notes_array[i].start_time - notes_array[i-1].start_time # Time since last note started
-        input_vector[i][3] = notes_array[i].pitch # Pitch of note
-        input_vector[i][4] = notes_array[i].velocity # Velocity of note
+        input_vector[i][0] = (notes_array[i].end_time - notes_array[i].start_time) / max_duration
+        input_vector[i][1] = (notes_array[i].start_time - notes_array[i-1].end_time) / max_interval
+        input_vector[i][2] = (notes_array[i].start_time - notes_array[i-1].start_time) / max_interval
+        input_vector[i][3] = notes_array[i].pitch / max_pitch
+        input_vector[i][4] = notes_array[i].velocity / max_velocity
 
     return input_vector
 
