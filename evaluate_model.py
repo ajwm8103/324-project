@@ -23,14 +23,22 @@ def test_model_from_file(dataloader, args, filename="model_1.pth"):
     tgt = tgts[0].to(device)
     
     output = model(src, tgt)  # tgt[:-1] used as target input to predict tgt[1:]
+    args.log("Sample Input:", src[0:5])
+    args.log("Sample Target:", tgt[0:5])
+    output[:, 0] = output[:, 0]
+    output[:, 1] = output[:, 1]
+    output[:, 2] = output[:, 2]
+    output[:, 3] = output[:, 3] * 127
+    output[:, 4] = output[:, 4] * 127
+    args.log("Model Output:", output[0:5])
 
     # Save to a midi file
-    embedding = np.array([output.cpu().detach().numpy()])
-    embedding_to_midi(embedding, filename='output.mid')
+    embedding = output#.cpu().detach().numpy()
+    embedding_to_midi(embedding, filename='model_output.mid')
 
 if __name__ == "__main__":
     args = fetch_arguments()
-
+    np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
     data_embedding = load_embedding_from_pickle(args)
 
     dataset = MidiDataset(data_embedding, args.seq_len, args, args.stride_length)
