@@ -7,7 +7,7 @@ import pickle
 def load_embedding_from_pickle(args):
     try:
         data_embedding = pickle.load(open(f'data/{args.data}_embedding.p', "rb"))
-        args.log("Data Embedding loaded from pickle file")    
+        args.log("Data Embedding loaded from pickle file")
     except:
         args.log("No embedding pickle file found, loading raw data and embedding it")
         try:

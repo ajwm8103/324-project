@@ -42,6 +42,7 @@ def main():
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Training on", device)
     model = nn.Transformer(d_model=5, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -77,6 +78,7 @@ def main():
 def fetch_arguments():
     parser = argparse.ArgumentParser(description='Transformer Training Script')
     parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
+    parser.add_argument("-t", "--tiny", action="store_true", help="Make dataset tiny")
     parser.add_argument('--epochs', type=int, default=1, help='Number of epochs')
     parser.add_argument('--seq_len', type=int, default=10, help='Sequence length')
     parser.add_argument('--batch_size', type=int, default=4, help='Batch size')

@@ -7,12 +7,14 @@ from tqdm import tqdm
 def load_data(args, data_path='data/maestro-v3.0.0'):
     # Loop through every file in the folder and load each file
     data = []
+    i = 0
     for subdir, dirs, files in os.walk(data_path):
-        for file in tqdm(files[:8]):
+        for file in tqdm(files):
             file_path = os.path.join(subdir, file)
             if file_path.endswith(".midi"):
+                i += 1
                 data.append(load_file(args, file_path))
-        break
+            if args.tiny and i > 30: break
     return np.array(data)
 
 def load_file(args, file_path):
