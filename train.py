@@ -20,9 +20,10 @@ class MidiDataset(Dataset):
         self.max_len = max(len(x) for x in data)
         self.seq_len = seq_len
         self.pad_value = pad_value
-        self.padded_data = np.array([np.pad(x, ((0, self.max_len - len(x)), (0, 0)), 'constant', constant_values=self.pad_value) for x in data])
+        self.padded_data = torch.tensor([np.pad(x, ((0, self.max_len - len(x)), (0, 0)), 'constant', constant_values=self.pad_value) for x in data])
         self.padded_data = self.padded_data.reshape(-1, data[0].shape[1])  # Flatten the data
-
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.padded_data = self.padded_data.to(self.device)
 
     def __len__(self):
         return len(self.padded_data) - self.seq_len
@@ -30,8 +31,7 @@ class MidiDataset(Dataset):
     def __getitem__(self, idx):
         x = self.padded_data[idx:idx + self.seq_len]
         y = self.padded_data[idx + 1:idx + self.seq_len + 1]
-        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
-
+        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32, device=self.device)
 
 def main():
     args = fetch_arguments()
@@ -41,7 +41,7 @@ def main():
     print(dataset)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print("Training on", device)
     model = nn.Transformer(d_model=5, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
     criterion = nn.MSELoss()
@@ -56,7 +56,7 @@ def main():
             loss = criterion(output, tgt)
             loss.backward()
             optimizer.step()
-            print(loss.item())
+            #print(loss.item())
 
     # Save our model:
     torch.save(model.state_dict(), 'transformer_midi_model.pth')
