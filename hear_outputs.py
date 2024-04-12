@@ -15,14 +15,12 @@ import random
 
 
 
-# Inside your generate_sequence function, adjust for batch_first if needed
-def generate_sequence(model, src, steps=128*2, seq_length=1000):
+def generate_sequence(model, src, steps=50, seq_length=128):
     model.eval()
     generated = src
     for step in range(steps):
         with torch.no_grad():
-            # For batch_first, ensure that the dimensions expected by the model are correct
-            output = model(generated, generated[:, :-1, :])  # Modify dimensions accordingly if batch_first is True
+            output = model(generated, generated[:, :-1, :]) 
             
             if output.size(1) == 0:  # Adjust dimension check for batch_first
                 raise ValueError(f"Output tensor is empty at step {step}. Check model configuration and input dimensions.")
@@ -35,6 +33,24 @@ def generate_sequence(model, src, steps=128*2, seq_length=1000):
 
             print(f"Step {step}: Generated shape: {generated.shape}")
     return generated
+
+
+# def generate_sequence(model, src, steps=50):
+#     model.eval()
+#     generated = src
+#     for step in range(steps):
+#         with torch.no_grad():
+#             output = model(generated, generated[:, :-1, :]) 
+            
+#             if output.size(1) == 0:  # Adjust dimension check for batch_first
+#                 raise ValueError(f"Output tensor is empty at step {step}. Check model configuration and input dimensions.")
+            
+#             new_seq = output[:, -1, :].unsqueeze(1)  # Adjust indexing for batch_first
+#             generated = torch.cat((generated, new_seq), dim=1)  # Append along the sequence dimension for batch_first
+            
+#             print(f"Step {step}: Generated shape: {generated.shape}")
+#     return generated
+
 
 args = fetch_arguments()
 data_embedding = load_embedding_from_pickle(args)
@@ -56,14 +72,14 @@ optimizer = optim.Adam(model.parameters(), lr=args.lr)
 # Load the model:
 model.load_state_dict(torch.load('transformer_midi_model.pth'))
 
-# # Generate a longer sequence
+# # # Generate a longer sequence
 src, tgt = next(iter(dataloader))
 src, tgt = src.to(device), tgt.to(device)
 
-# # Load all initial sequences into a list (if not too large, or adjust accordingly)
+# Load all initial sequences into a list (if not too large, or adjust accordingly)
 # initial_sequences = list(dataloader)
 
-# # Select a random initial sequence
+# Select a random initial sequence
 # random_index = random.randint(0, len(initial_sequences) - 1)
 # src, tgt = initial_sequences[random_index]
 # src, tgt = src.to(device), tgt.to(device)
@@ -77,4 +93,4 @@ if src.nelement() == 0:
 generated_seq = generate_sequence(model, src, steps=50)  # Adjust steps for desired length
 
 # Convert output to MIDI
-embedding_to_midi(generated_seq, 'long_output_1000seqlen.mid')
+embedding_to_midi(generated_seq, 'long_output_128steps.mid')
