@@ -44,8 +44,8 @@ def embedding(midi_seq):
     max_pitch = 127
     max_velocity = 127
     # You might want to determine these dynamically from the dataset
-    max_duration = 10.0  # Assuming the longest note duration in seconds
-    max_interval = 10.0  # Assuming the longest interval between notes in seconds
+    max_duration = 1.0  # Assuming the longest note duration in seconds
+    max_interval = 1.0  # Assuming the longest interval between notes in seconds
 
     input_vector = np.zeros((len(notes_array), 5))
 
@@ -59,8 +59,8 @@ def embedding(midi_seq):
         input_vector[i][0] = (notes_array[i].end_time - notes_array[i].start_time) / max_duration
         input_vector[i][1] = (notes_array[i].start_time - notes_array[i-1].end_time) / max_interval
         input_vector[i][2] = (notes_array[i].start_time - notes_array[i-1].start_time) / max_interval
-        input_vector[i][3] = notes_array[i].pitch / max_pitch
-        input_vector[i][4] = notes_array[i].velocity / max_velocity
+        input_vector[i][3] = notes_array[i].pitch
+        input_vector[i][4] = notes_array[i].velocity
 
     return input_vector
 

@@ -2,6 +2,8 @@
 /venv
 *.pyc
 *.pyc
+/__pycache__/
+*.p
 =======
 
 /data/data_embedding.p
