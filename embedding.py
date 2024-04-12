@@ -6,19 +6,19 @@ import pickle
 
 def load_embedding_from_pickle(args):
     try:
-        data_embedding = pickle.load(open("data_embedding.p", "rb"))
+        data_embedding = pickle.load(open("data/data_embedding.p", "rb"))
         args.log("Data Embedding loaded from pickle file")    
     except:
         args.log("No embedding pickle file found, loading raw data and embedding it")
         try:
-            data = pickle.load(open("data.p", "rb"))
+            data = pickle.load(open("data/data.p", "rb"))
             args.log("Raw Data loaded from pickle file")
         except:
             args.log("No raw data pickle file found, loading raw data from midi files")
             data_path = 'data/maestro-v3.0.0'
-            data = load_data(data_path)
+            data = load_data(args, data_path)
             args.log("Raw Data loaded")
-            pickle.dump(data, open("data.p", "wb"))
+            pickle.dump(data, open("data/data.p", "wb"))
             args.log("Raw Data saved to pickle file")
 
         args.log("Begining Embedding Data")
@@ -26,7 +26,7 @@ def load_embedding_from_pickle(args):
         for midi_seq in data:
             data_embedding.append(embedding(midi_seq))
         args.log("Data Embedding Complete")
-        pickle.dump(data_embedding, open("data_embedding.p", "wb"))
+        pickle.dump(data_embedding, open("data/data_embedding.p", "wb"))
         args.log("Data Embedding saved to pickle file")
 
     return data_embedding

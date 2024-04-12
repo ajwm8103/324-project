@@ -4,14 +4,14 @@ import os
 import numpy as np
 
 
-def load_data(data_path="data/maestro-v3.0.0"):
+def load_data(args, data_path="data/maestro-v3.0.0"):
     # Loop through every file in the folder and load each file
     data = []
     for subdir, dirs, files in os.walk(data_path):
         for file in files:
             file_path = os.path.join(subdir, file)
             if file_path.endswith(".midi"):
-                data.append(load_file(file_path))
+                data.append(load_file(args, file_path))
     return np.array(data)
 
 def load_file(args, file_path):
