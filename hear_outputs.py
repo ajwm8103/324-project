@@ -91,7 +91,7 @@ if src.nelement() == 0:
     raise ValueError("Input src tensor is empty, check your DataLoader and dataset.")
 
 
-generated_seq = generate_sequence(model, src, steps=50)  # Adjust steps for desired length
+generated_seq = generate_sequence(model, src, steps=15)  # Adjust steps for desired length
 
 # Convert output to MIDI
 embedding_to_midi(generated_seq, 'long_output_128steps.mid')

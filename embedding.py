@@ -81,7 +81,9 @@ def decode_embedding(embedding):
         end_time = start_time + embedding[0, i, 0].item()
 
         # Convert pitch to int explicitly
+        print('embedding[0, i, 3].item()', embedding[0, i, 3].item())
         pitch = int(embedding[0, i, 3].item())
+        print('pitch', pitch)
         # Convert velocity to int explicitly
         velocity = int(embedding[0, i, 4].item())
 
