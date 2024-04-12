@@ -1,5 +1,78 @@
 from note_seq import *
-import copy
+import copy, numbers, torch, pickle
+from tqdm import TqdmSynchronisationWarning
+
+class EncoderPipeline():
+  """A Pipeline that converts performances to a model specific encoding."""
+
+  def __init__(self, encoder_decoder, control_signals, optional_conditioning):
+    """Constructs an EncoderPipeline.
+
+    Args:
+      config: A PerformanceRnnConfig that specifies the encoder/decoder and
+          note density conditioning behavior.
+      name: A unique pipeline name.
+    """
+    #super(EncoderPipeline, self).__init__(
+    #    input_type=note_seq.BasePerformance,
+    #    output_type=tf.train.SequenceExample,
+    #    name=name)
+    self._encoder_decoder = encoder_decoder
+    self._control_signals = control_signals
+    self._optional_conditioning = optional_conditioning
+
+  def transform(self, input_object):
+    performance = input_object
+
+    if self._control_signals:
+      # Encode conditional on control signals.
+      control_sequences = []
+      for control in self._control_signals:
+        control_sequences.append(control.extract(performance))
+      control_sequence = list(zip(*control_sequences))
+      if self._optional_conditioning:
+        # Create two copies, one with and one without conditioning.
+        # pylint: disable=g-complex-comprehension
+        encoded = [
+            self._encoder_decoder.encode(
+                list(zip([disable] * len(control_sequence), control_sequence)),
+                performance) for disable in [False, True]
+        ]
+        # pylint: enable=g-complex-comprehension
+      else:
+        encoded = [self._encoder_decoder.encode(
+            control_sequence, performance)]
+    else:
+      # Encode unconditional.
+      input_data, label_data = self._encoder_decoder.encode(performance)
+      a = [input_data[0][0]]
+      a += label_data
+      
+      encoded = torch.tensor(a)
+    return encoded
+
+def make_sequence_example(inputs, labels):
+  """Returns a SequenceExample for the given inputs and labels.
+
+  Args:
+    inputs: A list of input vectors. Each input vector is a list of floats.
+    labels: A list of ints.
+
+  Returns:
+    A tf.train.SequenceExample containing inputs and labels.
+  """
+  #print('sussy', len(inputs), labels)
+  input_features = [torch.tensor(input_, dtype=torch.int64) for input_ in inputs]
+  label_features = torch.tensor(labels, dtype=torch.int64)
+  #for label in labels:
+  #  if isinstance(label, numbers.Number):
+  #    label = [label]
+  #  label_features.append(torch.)
+  feature_list = {
+      'inputs': input_features,
+      'labels': label_features,
+  }
+  return feature_list
 
 class PerformanceExtractor():
     """Extracts polyphonic tracks from a quantized NoteSequence."""

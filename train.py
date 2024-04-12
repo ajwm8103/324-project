@@ -20,12 +20,13 @@ def fetch_arguments():
     parser.add_argument('--train_count', type=int, default=10000, help='Number of training iterations. Each epoch is about 480000 data points')
     parser.add_argument('--seq_len', type=int, default=64, help='Sequence length')
     parser.add_argument('--stride_length', type=int, default=64, help='Stride length')
-    parser.add_argument('--batch_size', type=int, default=512, help='Batch size')
-    parser.add_argument('--nhead', type=int, default=5, help='Number of heads in the transformer model')
+    parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
+    parser.add_argument('--nhead', type=int, default=8, help='Number of heads in the transformer model')
     parser.add_argument('--num_encoder_layers', type=int, default=12, help='Number of encoder layers in the transformer model') # TODO: Check this
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--data', type=str, default='data', help='Name of data')
     parser.add_argument('--model', type=str, default='model_1', help='Model name')
+    parser.add_argument('--embedding', type=str, default='continuous', help='Embedding style')
 
     args = parser.parse_args()
 
@@ -44,7 +45,7 @@ class MidiDataset(Dataset):
         data_sliced = np.array(data_sliced)
         self.data = torch.tensor(data_sliced)
         args.log("Data shape:", self.data.shape)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     def __len__(self):
         return len(self.data) - self.seq_len
@@ -54,36 +55,79 @@ class MidiDataset(Dataset):
         y = self.data[idx, 1:]
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32, device=self.device)
 
+class MidiDatasetToken(Dataset):
+    def __init__(self, data, seq_len, args, stride_length=100):
+        self.seq_len = seq_len
+        self.data = []
+        self.targets = []
+
+        for song_tensor in data:
+            # Ensure the tensor is on CPU for slicing (if not already)
+            song_tensor = song_tensor.cpu()
+            # Generate slices of `seq_len + 1` size
+            for start_index in range(0, song_tensor.size(0) - seq_len, stride_length):
+                end_index = start_index + seq_len + 1
+                slice_ = song_tensor[start_index:end_index]
+                if slice_.size(0) == seq_len + 1:
+                    self.data.append(slice_[:-1])  # Input sequence
+                    self.targets.append(slice_[1:])  # Target sequence
+
+        self.data = torch.stack(self.data)  # Stack all the data tensors
+        self.targets = torch.stack(self.targets)  # Stack all the target tensors
+
+        args.log("Data shape:", self.data.shape)
+        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        x = self.data[idx].to(dtype=torch.long, device=self.device)  # Ensure data type and device
+        y = self.targets[idx].to(dtype=torch.long, device=self.device)
+        return x, y
+
 def main():
     args = fetch_arguments()
 
+    # Get embedding
     data_embedding = load_embedding_from_pickle(args)
-    dataset = MidiDataset(data_embedding, args.seq_len, args, args.stride_length)
+
+    # Dataset
+    if args.embedding == 'continuous':
+        dataset = MidiDataset(data_embedding, args.seq_len, args, args.stride_length)
+    elif args.embedding == 'token':
+        dataset = MidiDatasetToken(data_embedding, args.seq_len, args, args.stride_length)
+
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # Other params
+    d_model = 5 if args.embedding == 'continuous' else 1
+
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     print("Training on", device)
-    model = nn.Transformer(d_model=5, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
+    model = nn.Transformer(d_model=d_model, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
-    for training_iteration in range(args.train_count // args.batch_size):
-        model.train()
-        t = tqdm(dataloader, desc='Loss: N/A')
-        for src, tgt in t:
-            src, tgt = src.to(device), tgt.to(device)
-            optimizer.zero_grad()
-            output = model(src, tgt)
-            loss = criterion(output, tgt)
-            loss.backward()
-            optimizer.step()
-            #print(loss.item())
-            t.set_description(f'Loss: {loss.item()}')
-            t.refresh()
-
+    try:
+        for training_iteration in range(args.train_count // args.batch_size):
+            model.train()
+            t = tqdm(dataloader, desc='Loss: N/A')
+            for src, tgt in t:
+                src, tgt = src.to(device), tgt.to(device)
+                optimizer.zero_grad()
+                output = model(src, tgt)
+                loss = criterion(output, tgt)
+                loss.backward()
+                optimizer.step()
+                #print(loss.item())
+                t.set_description(f'Loss: {loss.item()}')
+                t.refresh()
+    except KeyboardInterrupt:
+        pass
 
     # H2: Save our model:
-    torch.save(model.state_dict(), f'{args.model}.pth')
+    torch.save(model.state_dict(), f'models/{args.model}.pth')
 
     model.eval()
     with torch.no_grad():

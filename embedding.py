@@ -2,10 +2,11 @@ import note_seq, pretty_midi
 from note_seq import midi_io, sequences_lib
 import numpy as np
 from data_loader import load_data
-from pipelines import PerformanceExtractor, extract_performances, Quantizer, TranspositionPipeline
-import pickle
+from pipelines import PerformanceExtractor, extract_performances, Quantizer, TranspositionPipeline, EncoderPipeline
+import pickle, torch, os
+from tqdm import tqdm
 
-def load_embedding_from_pickle(args):
+def load_continuous(args):
     try:
         data_embedding = pickle.load(open(f'data/{args.data}_embedding.p', "rb"))
         args.log("Data Embedding loaded from pickle file")
@@ -23,14 +24,43 @@ def load_embedding_from_pickle(args):
             args.log("Raw Data saved to pickle file")
 
         args.log("Begining Embedding Data")
-        data_embedding = []
-        for midi_seq in data:
-            data_embedding.append(embedding(midi_seq))
+        if args.embedding == 'token':
+            data_embedding = embed(data, mode='train')
+        elif args.embedding == 'continuous':
+            data_embedding = []
+            for midi_seq in data:
+                data_embedding.append(embedding(midi_seq))
         args.log("Data Embedding Complete")
-        pickle.dump(data_embedding, open(f'data/{args.data}_embedding.p', "wb"))
+        embedding_suffix = '_token' if args.embedding == 'token' else ''
+        pickle.dump(data_embedding, open(f'data/{args.data}{embedding_suffix}_embedding.p', "wb"))
         args.log("Data Embedding saved to pickle file")
 
     return data_embedding
+
+def load_token(args):
+    # Try loading
+    if os.path.exists(f'data/{args.data}_token.p'):
+        data_embedding = pickle.load(open(f'data/{args.data}_token.p', "rb"))
+        args.log("Data Embedding loaded from pickle file")
+    else:
+        args.log("No raw data pickle file found, loading raw data from midi files")
+        data_path = 'data/maestro-v3.0.0'
+        data = load_data(args, data_path)
+        args.log("Raw Data loaded")
+
+        args.log("Begining Embedding Data")
+        data_embedding = embed(data, mode='train')
+        args.log("Data Embedding Complete")
+        pickle.dump(data_embedding, open(f'data/{args.data}_token_embedding.p', "wb"))
+        args.log("Data Embedding saved to pickle file")
+        
+    return data_embedding
+
+def load_embedding_from_pickle(args):
+    if args.embedding == 'continuous':
+        return load_continuous(args)
+    elif args.embedding == 'token':
+        return load_token(args)
 
 def embed(note_seqs, mode='train'):
     # note_seqs, list of NoteSequence
@@ -40,38 +70,38 @@ def embed(note_seqs, mode='train'):
     transposition_range = list(range(-3, 4)) if mode == 'training' else [0]
 
     embedded = []
-    for note_seq in note_seqs:
+    for note_sequence in tqdm(note_seqs):
         
         # Apply sustain control changes
-        note_seq = sequences_lib.apply_sustain_control_changes(note_seq)
+        note_sequence = sequences_lib.apply_sustain_control_changes(note_sequence)
 
         # Apply note stretches up to 5% either direction in time
-        note_seq = [sequences_lib.stretch_note_sequence(note_seq, stretch_factor)
+        note_sequence = [sequences_lib.stretch_note_sequence(note_sequence, stretch_factor)
             for stretch_factor in stretch_factors]
         
         # Split into chunks of 30 seconds
-        note_seq = [
+        note_sequence = [
             sequences_lib.split_note_sequence(n, hop_size_seconds)
-            for n in note_seq
+            for n in note_sequence
             ]
 
         # Flatten into many sequences
-        note_seq = [n for ns in note_seq for n in ns]
-        print(len(note_seq), type(note_seq[0]))
+        note_sequence = [n for ns in note_sequence for n in ns]
+        #print(len(note_sequence), type(note_sequence[0]))
 
         # Quantize to 100 steps per second
         quantizer = Quantizer(steps_per_second=100, name='Quantizer')
-        note_seq = [quantizer.transform(n) for n in note_seq]
-        note_seq = [n for ns in note_seq for n in ns] # Flatten
+        note_sequence = [quantizer.transform(n) for n in note_sequence]
+        note_sequence = [n for ns in note_sequence for n in ns] # Flatten
 
-        print(len(note_seq), type(note_seq[0]))
+        #print(len(note_sequence), type(note_sequence[0]))
 
         # Transpose up to a major third in either direction
         transposition_pipeline  = TranspositionPipeline(transposition_range)
-        note_seq = [transposition_pipeline.transform(n) for n in note_seq]
-        note_seq = [n for ns in note_seq for n in ns] # Flatten
+        note_sequence = [transposition_pipeline.transform(n) for n in note_sequence]
+        note_sequence = [n for ns in note_sequence for n in ns] # Flatten
 
-        print(len(note_seq), type(note_seq[0]))
+        #print(len(note_sequence), type(note_sequence[0]))
 
         perf_extractor = PerformanceExtractor(
         min_events=32,
@@ -79,20 +109,35 @@ def embed(note_seqs, mode='train'):
         num_velocity_bins=0,
         note_performance=False,
         )
-        note_seq = [perf_extractor.transform(n) for n in note_seq]
-        note_seq = [n for ns in note_seq for n in ns] # Flatten
+        note_sequence = [perf_extractor.transform(n) for n in note_sequence]
+        note_sequence = [n for ns in note_sequence for n in ns] # Flatten
 
-        print(len(note_seq), type(note_seq[0]))
+        #print(len(note_sequence), type(note_sequence[0]))
 
+        encoder_decoder = note_seq.OneHotIndexEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
+        #encoder_decoder = note_seq.EventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
+        encoder_pipeline = EncoderPipeline(encoder_decoder=encoder_decoder, control_signals=None,
+                                           optional_conditioning=False)
+
+        note_sequence = [encoder_pipeline.transform(n) for n in note_sequence]
+        #print(type(note_sequence[0]))
         # Add to embedded
-        embedded.extend(note_seq)
+        embedded.extend(note_sequence)
 
     print('Embedded', len(embedded), type(embedded[0]))
+    #print(embedded[0])
     
-        
-    #encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
-    #encoder_decoder.encode()
-    return embedded
+    # Convert to torch
+    #input_features = [torch.tensor(input_, dtype=torch.int64) for input_ in inputs]
+    #label_features = torch.tensor(labels, dtype=torch.int64)
+
+    tensor_data = []
+    for token in embedded:
+        # Convert lists to tensors
+        tensor_features = torch.tensor(token, dtype=torch.int16)
+        tensor_data.append(tensor_features)
+        #print(tensor_features.shape, tensor_labels.shape)
+    return tensor_data
 
 def embedding(midi_seq):
     # Convert notes into an embedding for a transformer model:
@@ -178,6 +223,11 @@ if __name__ == '__main__':
     #print(midi_seq)
 
     output = embed([midi_seq])
+
+    pickle.dump(output, open(f'data/data_token.p', "wb"))
+
+    #serialized = output[0].SerializeToString()
+    print(len(output), type(output[0]))
 
     
     ##print(midi_seq)
