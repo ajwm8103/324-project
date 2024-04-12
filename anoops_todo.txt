@@ -1,0 +1,1 @@
+- convert src and tgt to midi as well, and compare. it makes sense now.

@@ -71,7 +71,7 @@ def embedding_to_midi(embedding, filename='output.mid'):
 def decode_embedding(embedding):
     notes_array = []
     start_time_previous_note = 0
-    print("Embedding shape:", embedding.shape)  # Verify the shape of embedding
+    # print("Embedding shape:", embedding.shape)  # Verify the shape of embedding
 
     for i in range(embedding.shape[1]):  # embedding.shape[1] should be the number of notes if the first dimension is batch
         # print("Current embedding element shape:", embedding[0, i].shape)  # Check the shape of each note's features
@@ -81,9 +81,9 @@ def decode_embedding(embedding):
         end_time = start_time + embedding[0, i, 0].item()
 
         # Convert pitch to int explicitly
-        print('embedding[0, i, 3].item()', embedding[0, i, 3].item())
+        # print('embedding[0, i, 3].item()', embedding[0, i, 3].item())
         pitch = int(embedding[0, i, 3].item())
-        print('pitch', pitch)
+        # print('pitch', pitch)
         # Convert velocity to int explicitly
         velocity = int(embedding[0, i, 4].item())
 
