@@ -31,7 +31,8 @@ def generate_sequence(model, src, steps=50, seq_length=128):
             if generated.size(1) > seq_length:  # Check sequence length for batch_first
                 generated = generated[:, -seq_length:, :]  # Keep only the most recent sequences
 
-            print(f"Step {step}: Generated shape: {generated.shape}")
+            # print(f"Step {step}: Generated shape: {generated.shape}")
+    print(generated)
     return generated
 
 

@@ -44,11 +44,11 @@ def embedding(midi_seq):
     input_vector[0][4] = notes_array[0].velocity
 
     for i in range(1, len(notes_array)):
-        input_vector[i][0] = notes_array[i].end_time - notes_array[i].start_time
+        input_vector[i][0] = notes_array[i].end_time - notes_array[i].start_time # Duration of note
         input_vector[i][1] = notes_array[i].start_time - notes_array[i-1].end_time # Time between notes
         input_vector[i][2] = notes_array[i].start_time - notes_array[i-1].start_time # Time since last note started
-        input_vector[i][3] = notes_array[i].pitch
-        input_vector[i][4] = notes_array[i].velocity
+        input_vector[i][3] = notes_array[i].pitch # Pitch of note
+        input_vector[i][4] = notes_array[i].velocity # Velocity of note
 
     return input_vector
 
@@ -74,7 +74,7 @@ def decode_embedding(embedding):
     print("Embedding shape:", embedding.shape)  # Verify the shape of embedding
 
     for i in range(embedding.shape[1]):  # embedding.shape[1] should be the number of notes if the first dimension is batch
-        print("Current embedding element shape:", embedding[0, i].shape)  # Check the shape of each note's features
+        # print("Current embedding element shape:", embedding[0, i].shape)  # Check the shape of each note's features
 
         start_increment = embedding[0, i, 2].item()
         start_time = start_time_previous_note + start_increment
