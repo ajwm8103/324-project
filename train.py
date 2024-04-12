@@ -59,6 +59,18 @@ def main():
             optimizer.step()
             print(loss.item())
 
+    # Save our model:
+    torch.save(model.state_dict(), 'transformer_midi_model.pth')
+
+    model.eval()
+    with torch.no_grad():
+        src, tgt = next(iter(dataloader))
+        src, tgt = src.to(device), tgt.to(device)
+        output = model(src, tgt[:-1])  # tgt[:-1] used as target input to predict tgt[1:]
+        print("Sample input:", src[0])
+        print("Model output:", output[0])
+        print("True target:", tgt[1][0])
+
 
 
     # Time to try training with a transformer model
