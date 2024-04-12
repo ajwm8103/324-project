@@ -2,10 +2,9 @@
 /venv
 *.pyc
 *.pyc
-/__pycache__/
+/__pycache__/*
 *.p
-=======
-
+/data/*.p
 /data/data_embedding.p
 /data/data.p
 
