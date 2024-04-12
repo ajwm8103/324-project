@@ -67,16 +67,36 @@ def embedding_to_midi(embedding, filename='output.mid'):
     midi_file.instruments.append(instrument)
     midi_file.write(filename)
 
+
 def decode_embedding(embedding):
     notes_array = []
     start_time_previous_note = 0
-    for i in range(len(embedding)):
-        start_time = start_time_previous_note + embedding[i][2] # TODO: This isn't perfect due to redundancy, maybe do an average?
-        end_time = start_time + embedding[i][0]
-        note = pretty_midi.Note(velocity=int(embedding[i][4]), pitch=int(embedding[i][3]), start=float(start_time), end=float(end_time))
+    print("Embedding shape:", embedding.shape)  # Verify the shape of embedding
+
+    for i in range(embedding.shape[1]):  # embedding.shape[1] should be the number of notes if the first dimension is batch
+        print("Current embedding element shape:", embedding[0, i].shape)  # Check the shape of each note's features
+
+        start_increment = embedding[0, i, 2].item()
+        start_time = start_time_previous_note + start_increment
+        end_time = start_time + embedding[0, i, 0].item()
+
+        # Convert pitch to int explicitly
+        pitch = int(embedding[0, i, 3].item())
+        # Convert velocity to int explicitly
+        velocity = int(embedding[0, i, 4].item())
+
+        note = pretty_midi.Note(
+            velocity=velocity,
+            pitch=pitch,  # Use the integer pitch
+            start=float(start_time),
+            end=float(end_time)
+        )
         notes_array.append(note)
         start_time_previous_note = start_time
+
     return notes_array
+
+
 
 if __name__ == '__main__':
     from data_loader import load_file
