@@ -39,6 +39,7 @@ def embed(note_seqs, mode='train'):
     # Traponse no more than a major third
     transposition_range = list(range(-3, 4)) if mode == 'training' else [0]
 
+    embedded = []
     for note_seq in note_seqs:
         
         # Apply sustain control changes
@@ -83,14 +84,15 @@ def embed(note_seqs, mode='train'):
 
         print(len(note_seq), type(note_seq[0]))
 
+        # Add to embedded
+        embedded.extend(note_seq)
 
-        #encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
-        #processed = encoder_decoder.encode(x)
-        print(processed)
-        
+    print('Embedded', len(embedded), type(embedded[0]))
+    
         
     #encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
     #encoder_decoder.encode()
+    return embedded
 
 def embedding(midi_seq):
     # Convert notes into an embedding for a transformer model:
@@ -185,4 +187,4 @@ if __name__ == '__main__':
     ##np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
     ##print(input_vector)
 
-    embedding_to_midi(input_vector, 'output.midi')
+    #embedding_to_midi(input_vector, 'output.midi')
