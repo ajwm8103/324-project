@@ -1,7 +1,8 @@
 import note_seq, pretty_midi
-from note_seq import midi_io
+from note_seq import midi_io, sequences_lib
 import numpy as np
 from data_loader import load_data
+from pipelines import PerformanceExtractor, extract_performances, Quantizer, TranspositionPipeline
 import pickle
 
 def load_embedding_from_pickle(args):
@@ -31,10 +32,65 @@ def load_embedding_from_pickle(args):
 
     return data_embedding
 
-def test():
-    
-    encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
-    encoder_decoder.encode()
+def embed(note_seqs, mode='train'):
+    # note_seqs, list of NoteSequence
+    stretch_factors = [0.95, 0.975, 1.0, 1.025, 1.05] if mode == 'train' else [1.0]
+    hop_size_seconds = 30.0
+    # Traponse no more than a major third
+    transposition_range = list(range(-3, 4)) if mode == 'training' else [0]
+
+    for note_seq in note_seqs:
+        
+        # Apply sustain control changes
+        note_seq = sequences_lib.apply_sustain_control_changes(note_seq)
+
+        # Apply note stretches up to 5% either direction in time
+        note_seq = [sequences_lib.stretch_note_sequence(note_seq, stretch_factor)
+            for stretch_factor in stretch_factors]
+        
+        # Split into chunks of 30 seconds
+        note_seq = [
+            sequences_lib.split_note_sequence(n, hop_size_seconds)
+            for n in note_seq
+            ]
+
+        # Flatten into many sequences
+        note_seq = [n for ns in note_seq for n in ns]
+        print(len(note_seq), type(note_seq[0]))
+
+        # Quantize to 100 steps per second
+        quantizer = Quantizer(steps_per_second=100, name='Quantizer')
+        note_seq = [quantizer.transform(n) for n in note_seq]
+        note_seq = [n for ns in note_seq for n in ns] # Flatten
+
+        print(len(note_seq), type(note_seq[0]))
+
+        # Transpose up to a major third in either direction
+        transposition_pipeline  = TranspositionPipeline(transposition_range)
+        note_seq = [transposition_pipeline.transform(n) for n in note_seq]
+        note_seq = [n for ns in note_seq for n in ns] # Flatten
+
+        print(len(note_seq), type(note_seq[0]))
+
+        perf_extractor = PerformanceExtractor(
+        min_events=32,
+        max_events=512,
+        num_velocity_bins=0,
+        note_performance=False,
+        )
+        note_seq = [perf_extractor.transform(n) for n in note_seq]
+        note_seq = [n for ns in note_seq for n in ns] # Flatten
+
+        print(len(note_seq), type(note_seq[0]))
+
+
+        #encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
+        #processed = encoder_decoder.encode(x)
+        print(processed)
+        
+        
+    #encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
+    #encoder_decoder.encode()
 
 def embedding(midi_seq):
     # Convert notes into an embedding for a transformer model:
@@ -110,7 +166,6 @@ def decode_embedding(embedding):
 
     return notes_array
 
-
 if __name__ == '__main__':
     from data_loader import load_file
     data_path = 'data/maestro-v3.0.0'
@@ -118,9 +173,11 @@ if __name__ == '__main__':
     
 
     midi_seq = load_file(data_path + test_path)
-    encoder_decoder = note_seq.OneHotEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
-    processed = encoder_decoder.encode(midi_seq)
-    print(processed)
+    #print(midi_seq)
+
+    output = embed([midi_seq])
+
+    
     ##print(midi_seq)
     #input_vector = embedding(midi_seq)
 

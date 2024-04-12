@@ -8,17 +8,17 @@ def load_data(args, data_path='data/maestro-v3.0.0'):
     # Loop through every file in the folder and load each file
     data = []
     i = 0
-    for subdir, dirs, files in os.walk(data_path):
-        for file in tqdm(files):
+    for subdir, dirs, files in tqdm(os.walk(data_path)):
+        for file in files:
             file_path = os.path.join(subdir, file)
             if file_path.endswith(".midi"):
                 i += 1
                 data.append(load_file(file_path))
-            if args.tiny and i > 30: break
+            if args.tiny and i > 200: break
     return np.array(data)
 
 def load_file(file_path):
-    print("LOADING FILE: " + file_path)
+    #print("LOADING FILE: " + file_path)
     midi_data = pretty_midi.PrettyMIDI(file_path)
     midi_seq = midi_io.midi_to_note_sequence(midi_data)
     return midi_seq

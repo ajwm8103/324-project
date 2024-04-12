@@ -24,6 +24,7 @@ def fetch_arguments():
     parser.add_argument('--num_encoder_layers', type=int, default=12, help='Number of encoder layers in the transformer model') # TODO: Check this
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
     parser.add_argument('--data', type=str, default='data', help='Name of data')
+    parser.add_argument('--model', type=str, default='model_1', help='Model name')
 
     args = parser.parse_args()
 
@@ -84,7 +85,7 @@ def main():
                 break
 
     # H2: Save our model:
-    torch.save(model.state_dict(), 'transformer_midi_model.pth')
+    torch.save(model.state_dict(), f'{args.model}.pth')
 
     model.eval()
     with torch.no_grad():
