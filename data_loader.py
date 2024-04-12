@@ -14,8 +14,8 @@ def load_data(data_path="data/maestro-v3.0.0"):
                 data.append(load_file(file_path))
     return np.array(data)
 
-def load_file(file_path):
-    print("LOADING FILE: " + file_path)
+def load_file(args, file_path):
+    args.log("LOADING FILE: " + file_path)
     midi_data = pretty_midi.PrettyMIDI(file_path)
     midi_seq = midi_io.midi_to_note_sequence(midi_data)
     return midi_seq

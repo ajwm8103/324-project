@@ -4,30 +4,30 @@ import numpy as np
 from data_loader import load_data
 import pickle
 
-def load_embedding_from_pickle(verbose=False):
+def load_embedding_from_pickle(args):
     try:
         data_embedding = pickle.load(open("data_embedding.p", "rb"))
-        if verbose: print("Data Embedding loaded from pickle file")    
+        args.log("Data Embedding loaded from pickle file")    
     except:
-        if verbose: print("No embedding pickle file found, loading raw data and embedding it")
+        args.log("No embedding pickle file found, loading raw data and embedding it")
         try:
             data = pickle.load(open("data.p", "rb"))
-            if verbose: print("Raw Data loaded from pickle file")
+            args.log("Raw Data loaded from pickle file")
         except:
-            if verbose: print("No raw data pickle file found, loading raw data from midi files")
+            args.log("No raw data pickle file found, loading raw data from midi files")
             data_path = 'data/maestro-v3.0.0'
             data = load_data(data_path)
-            if verbose: print("Raw Data loaded")
+            args.log("Raw Data loaded")
             pickle.dump(data, open("data.p", "wb"))
-            if verbose: print("Raw Data saved to pickle file")
+            args.log("Raw Data saved to pickle file")
 
-        if verbose: print("Begining Embedding Data")
+        args.log("Begining Embedding Data")
         data_embedding = []
         for midi_seq in data:
             data_embedding.append(embedding(midi_seq))
-        if verbose: print("Data Embedding Complete")
+        args.log("Data Embedding Complete")
         pickle.dump(data_embedding, open("data_embedding.p", "wb"))
-        if verbose: print("Data Embedding saved to pickle file")
+        args.log("Data Embedding saved to pickle file")
 
     return data_embedding
 

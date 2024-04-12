@@ -17,7 +17,7 @@ import numpy as np
 def main():
     args = fetch_arguments()
 
-    data_embedding = load_embedding_from_pickle(verbose=args.verbose)
+    data_embedding = load_embedding_from_pickle(args)
     for i in range(len(data_embedding)):
         print(data_embedding[i].shape)
     
@@ -37,6 +37,8 @@ def fetch_arguments():
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
 
     args = parser.parse_args()
+
+    args.log = print if args.verbose else lambda x: None
     return args
 
 if __name__ == '__main__':
