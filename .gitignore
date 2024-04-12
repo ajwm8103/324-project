@@ -2,3 +2,8 @@
 /venv
 *.pyc
 *.pyc
+=======
+
+/data/data_embedding.p
+/data/data.p
+
