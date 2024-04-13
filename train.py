@@ -34,6 +34,7 @@ def fetch_arguments():
     parser.add_argument('--data', type=str, default='data', help='Name of data')
     parser.add_argument('--model', type=str, default='model_1', help='Model name')
     parser.add_argument('--embedding', type=str, default='continuous', help='Embedding style')
+    parser.add_argument('--from_model', type=str, default=None, help='Load model from file')
 
     args = parser.parse_args()
 
@@ -115,6 +116,14 @@ def calculate_loss(model, data):
     model.train() # Switch back to training mode
     return loss_total / k
 
+def initialize_model(args):
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    print("Training on", device)
+    d_model = 5 if args.embedding == 'continuous' else 1
+    model = nn.Transformer(d_model=d_model, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
+    return model, device
+
+
 def train_continuous(args):
     # Get embedding
     data_embedding = load_embedding_from_pickle(args)
@@ -127,19 +136,21 @@ def train_continuous(args):
 
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True, drop_last=True)
     dataloader_test = DataLoader(dataset_test, batch_size=args.batch_size, shuffle=True, drop_last=True)
-    # Other params
-    d_model = 5 if args.embedding == 'continuous' else 1
 
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    print("Training on", device)
-    model = nn.Transformer(d_model=d_model, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
+    model, device = initialize_model(args)
+    if not(args.from_model == None):
+        print("Load model from file")
+        model.load_state_dict(torch.load(f'models/{args.from_model}.pth', map_location=device))
+
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
+    
+    num_iterations_to_train = args.train_count // args.batch_size
     try:
         iters, train_loss, train_acc, test_acc = [], [], [], []
         iter_count = 0
-        for training_iteration in range(args.train_count // args.batch_size):
+        for training_iteration in range(num_iterations_to_train):
             model.train()
             t = tqdm(dataloader_train, desc='Loss: N/A')
             for src, tgt in t:
@@ -163,7 +174,7 @@ def train_continuous(args):
                     test_acc.append(va)
                     print(iter_count, "Loss:", float(loss), "Train Acc:", ta, "Val Acc:", va)
     except KeyboardInterrupt:
-        pass
+        print("Training interrupted.")
 
     # H2: Save our model:
     torch.save(model.state_dict(), f'models/{args.model}.pth')

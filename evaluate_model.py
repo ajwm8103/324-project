@@ -10,6 +10,7 @@ from embedding import load_embedding_from_pickle, embedding_to_midi
 from train import MidiDataset, MidiDatasetToken, collate_fn
 from transformer import TransformerModel
 import numpy as np
+import random
 import note_seq, pretty_midi
 
 def test_token_model_from_file(args, filename='models/latest_model_1_token.pth'):
@@ -52,22 +53,20 @@ def test_model_from_file(dataloader, args, filename="models/latest_model_1.pth")
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     model = nn.Transformer(d_model=5, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
     
-    model.load_state_dict(torch.load(filename, map_location=device))
+    model.load_state_dict(torch.load(f"models/{filename}", map_location=device))
     model.to(device)
 
-    srcs, tgts = next(iter(dataloader))
-    src = srcs[0].to(device)
-    tgt = tgts[0].to(device)
-    
-    output = model(src, tgt)  # tgt[:-1] used as target input to predict tgt[1:]
-    args.log("Sample Input:", src[0:5])
-    args.log("Sample Target:", tgt[0:5])
-    output[:, 0] = output[:, 0]
-    output[:, 1] = output[:, 1]
-    output[:, 2] = output[:, 2]
-    output[:, 3] = output[:, 3] * 127
-    output[:, 4] = output[:, 4] * 127
-    args.log("Model Output:", output[0:5])
+    batches = list(dataloader)
+    for i in range(8):
+        random_batch = random.choice(batches)
+        srcs, tgts = random_batch
+        src = srcs[0].to(device)
+        tgt = tgts[0].to(device)
+        
+        output = model(src, tgt)  # tgt[:-1] used as target input to predict tgt[1:]
+        args.log("Sample Input:", src[0:5])
+        args.log("Sample Target:", tgt[0:5])
+        args.log("Model Output:", output[0:5])
 
     # Save to a midi file
     embedding = output#.cpu().detach().numpy()
