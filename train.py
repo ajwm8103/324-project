@@ -152,7 +152,14 @@ def initialize_model(args):
 
 
 def train_continuous(args):
-    ''' Train our transformer model. Keep track of loss over time, and return all that.'''
+    '''
+    Trains the transformer model using continuous embeddings.
+
+    This function loads the data embeddings, splits the data into training and testing sets, creates data loaders for both sets, and initializes the transformer model. 
+    If a pre-trained model is provided, it loads the state of that model. 
+
+    The function then trains the model on the training data and evaluates it on the testing data.
+    '''
     # Get embedding
     data_embedding = load_embedding_from_pickle(args)
 
@@ -162,6 +169,7 @@ def train_continuous(args):
     dataset_train = MidiDataset(data_train, args.seq_len, args, args.stride_length)
     dataset_test = MidiDataset(data_test, args.seq_len, args, args.stride_length)
 
+    # Format it so that Transformer model can read it
     dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True, drop_last=True)
     dataloader_test = DataLoader(dataset_test, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
@@ -239,6 +247,13 @@ def calculate_loss_token(model, data):
     '''
     Calculate Loss for the discrete tokenized embedding type of model.
     Error type: Cross Entropy Loss. This is key because it causes the model to predict as close to the targets as possible.
+    
+    Args:
+        model: The model for which the loss is being calculated.
+        data: The data on which the model's performance is evaluated.
+        
+    Returns:
+        The average loss of the model on the given data.
     '''
     criterion = nn.CrossEntropyLoss()
     model.eval() # Switch to evaluation mode

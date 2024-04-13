@@ -13,15 +13,23 @@ import copy, numbers, torch, pickle
 from tqdm import TqdmSynchronisationWarning
 
 class EncoderPipeline():
-  """A Pipeline that converts performances to a model specific encoding."""
+  """
+  A Pipeline that converts performances to a model specific encoding.
+  
+  Attributes:
+    _encoder_decoder: An encoder/decoder object that is used to convert performances to a model specific encoding.
+    _control_signals: A list of control signals that are used to condition the model.
+    _optional_conditioning: A boolean that indicates whether the conditioning is optional or not.
+  """
 
   def __init__(self, encoder_decoder, control_signals, optional_conditioning):
-    """Constructs an EncoderPipeline.
+    """
+    Constructs an EncoderPipeline.
 
     Args:
-      config: A PerformanceRnnConfig that specifies the encoder/decoder and
-          note density conditioning behavior.
-      name: A unique pipeline name.
+      encoder_decoder: An encoder/decoder object that is used to convert performances to a model specific encoding.
+      control_signals: A list of control signals that are used to condition the model.
+      optional_conditioning: A boolean that indicates whether the conditioning is optional or not.
     """
     #super(EncoderPipeline, self).__init__(
     #    input_type=note_seq.BasePerformance,
@@ -32,6 +40,9 @@ class EncoderPipeline():
     self._optional_conditioning = optional_conditioning
 
   def transform(self, input_object):
+    """
+    Convert an input midi file to a model specific encoding.
+    """
     performance = input_object
 
     if self._control_signals:
