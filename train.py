@@ -21,6 +21,9 @@ import numpy as np
 device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
 def fetch_arguments():
+    '''
+    These are all the parameters that are used in the model and during training. Note we use argparse.ArgumentParser because it allows us to rapidly try different parameters using commandline arguments.
+    '''
     parser = argparse.ArgumentParser(description='Transformer Training Script')
     parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
     parser.add_argument("-t", "--tiny", action="store_true", help="Make dataset tiny")
@@ -38,12 +41,16 @@ def fetch_arguments():
 
     args = parser.parse_args()
 
+    # If not verbose, don't print:
     args.log = print if args.verbose else lambda *x, **y: None
     return args
 
 class MidiDataset(Dataset):
-    # In order to capture the elements of music I am combining all tracks together. This means that the Transformer model will loose the "uniqueness" of any individual song.
+    '''
+    A Pytorch "Dataset" object lets us convert any input data into a format accessible by pytorch models such as the Transformer.
+    '''
     def __init__(self, data, seq_len, args, stride_length=100):
+        'Initializes the dataset, Take in the data and convert it to individual input output samples (self.data) of size seq_len '
         self.seq_len = seq_len
         # slice the data into size seq_len using a sliding window:
         self.data = []
@@ -56,15 +63,24 @@ class MidiDataset(Dataset):
         self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     def __len__(self):
-        return len(self.data) - self.seq_len
+        'Denotes the total number of samples'
+        return len(self.data)
 
     def __getitem__(self, idx):
+        '''
+        The most important function in this class, this denotes how to get a sample from the dataset.
+        This returns an input and target pair that is used to train or test the model.
+        '''
         x = self.data[idx, :-1]
         y = self.data[idx, 1:]
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32, device=self.device)
 
 class MidiDatasetToken(Dataset):
+    '''
+    A Pytorch "Dataset" object lets us convert any input data into a format accessible by pytorch models such as the Transformer.
+    '''
     def __init__(self, data, seq_len, args, stride_length=100):
+        'Initializes the dataset, Take in the data and convert it to individual input output samples (self.data) of size seq_len '
         self.seq_len = seq_len
         self.data = []
         self.targets = []
@@ -87,20 +103,30 @@ class MidiDatasetToken(Dataset):
         self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     def __len__(self):
+        'Denotes the total number of samples'
         return len(self.data)
 
     def __getitem__(self, idx):
+        '''
+        The most important function in this class, this denotes how to get a sample from the dataset.
+        This returns an input and target pair that is used to train or test the model.
+        '''
         x = self.data[idx].to(dtype=torch.long, device=self.device)  # Ensure data type and device
         y = self.targets[idx].to(dtype=torch.long, device=self.device)
         return x, y
     
 def collate_fn(batch):
+    '''Collate function for DataLoader to pad sequences to the same length. Crucial for transfomer models which depend on positional relationships'''
     inputs, targets = zip(*batch)
     inputs_padded = pad_sequence(inputs, batch_first=True, padding_value=0)
     targets_padded = pad_sequence(targets, batch_first=True, padding_value=0)
     return inputs_padded, targets_padded
 
 def calculate_loss(model, data):
+    '''
+    Calculate Loss for the continuous embedding type of model.
+    Error type: Mean Squared Error. This is key because it causes the model to predict as close to the targets as possible.
+    '''
     criterion = nn.MSELoss()
     model.eval() # Switch to evaluation mode
     k = 0
@@ -117,6 +143,7 @@ def calculate_loss(model, data):
     return loss_total / k
 
 def initialize_model(args):
+    ''' Creates a blank transformer model with the set number of layers and heads.'''
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     print("Training on", device)
     d_model = 5 if args.embedding == 'continuous' else 1
@@ -125,6 +152,7 @@ def initialize_model(args):
 
 
 def train_continuous(args):
+    ''' Train our transformer model. Keep track of loss over time, and return all that.'''
     # Get embedding
     data_embedding = load_embedding_from_pickle(args)
 
@@ -147,6 +175,7 @@ def train_continuous(args):
 
     
     num_iterations_to_train = args.train_count // args.batch_size
+    # Try lets us break out early if we want to to try the model out (Ctrl + C to break out of training)
     try:
         iters, train_loss, train_acc, test_acc = [], [], [], []
         iter_count = 0
@@ -177,13 +206,14 @@ def train_continuous(args):
         print("Training interrupted.")
 
     # H2: Save our model:
+    # Save the model so that we can load and try specific cases with it later (see evaluate_model.py)
     torch.save(model.state_dict(), f'models/{args.model}.pth')
 
     model.eval()
     with torch.no_grad():
         src, tgt = next(iter(dataloader_train))
         src, tgt = src.to(device), tgt.to(device)
-        output = model(src, tgt)  # tgt[:-1] used as target input to predict tgt[1:]
+        output = model(src, tgt)
         print("Sample input:", src[0])
         print("Model output:", output[0])
         print("True target:", tgt[1][0])
@@ -206,6 +236,10 @@ def train_continuous(args):
 
 
 def calculate_loss_token(model, data):
+    '''
+    Calculate Loss for the discrete tokenized embedding type of model.
+    Error type: Cross Entropy Loss. This is key because it causes the model to predict as close to the targets as possible.
+    '''
     criterion = nn.CrossEntropyLoss()
     model.eval() # Switch to evaluation mode
     k = 0
@@ -224,6 +258,7 @@ def calculate_loss_token(model, data):
     return loss_total / k
 
 def train_token(args):
+    ''' Train our transformer model. Keep track of loss over time, and return all that.'''
     # Get embedding
     data_embedding = load_embedding_from_pickle(args)
 
