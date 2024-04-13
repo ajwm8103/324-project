@@ -41,8 +41,15 @@ def test_token_model_from_file(args, filename='models/latest_model_1_token.pth')
         #encoder_decoder.decode_event()
     print(note_performance)
 
-def test_model_from_file(dataloader, args, filename="model_1.pth"):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    generated_sequence = note_performance.to_sequence(
+        max_note_duration=5.0)
+
+    print(generated_sequence, type(generated_sequence))
+
+    note_seq.sequence_proto_to_midi_file(generated_sequence, 'outputs/token/generated_sequence.mid')
+
+def test_model_from_file(dataloader, args, filename="models/latest_model_1.pth"):
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     model = nn.Transformer(d_model=5, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
     
     model.load_state_dict(torch.load(filename, map_location=device))
@@ -64,7 +71,7 @@ def test_model_from_file(dataloader, args, filename="model_1.pth"):
 
     # Save to a midi file
     embedding = output#.cpu().detach().numpy()
-    embedding_to_midi(embedding, filename='model_output.mid')
+    embedding_to_midi(embedding, filename='outputs/continuous/model_output_2.mid')
 
 if __name__ == "__main__":
     args = fetch_arguments()
