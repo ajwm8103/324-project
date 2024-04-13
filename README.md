@@ -16,6 +16,20 @@ The key difference between the two transformer models is the embedding represent
 
 **transformer.py**: This file contains the implementation of the transformer model used for tokenized MIDI generation.
 
+## Running the Code:
+Run the training for the tokenized embedding Transformer:
+```console
+$ python train.py --verbose --embedding token --data data_400 --tiny
+```
+Produce output midi files using the tokenized embedding Transformer:
+```console
+$ python evaluate_model.py --embedding token --data data_400
+```
+Produce output midi files using the continuous embedding Transformer:
+```console
+$ python evaluate_model.py --embedding token --data data_400 --tiny
+```
+
 ### Output Files:
 **model_output.mid**: This is a sample output from the trained model.
 

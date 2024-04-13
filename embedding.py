@@ -171,15 +171,15 @@ def embedding(midi_seq):
     input_vector[0][0] = (notes_array[0].end_time - notes_array[0].start_time)
     input_vector[0][1] = 0  # Time between notes
     input_vector[0][2] = 0  # Time since last note
-    input_vector[0][3] = notes_array[0].pitch
-    input_vector[0][4] = notes_array[0].velocity
+    input_vector[0][3] = notes_array[0].pitch / 128
+    input_vector[0][4] = notes_array[0].velocity / 128
 
     for i in range(1, len(notes_array)):
         input_vector[i][0] = (notes_array[i].end_time - notes_array[i].start_time) 
         input_vector[i][1] = (notes_array[i].start_time - notes_array[i-1].end_time)
         input_vector[i][2] = (notes_array[i].start_time - notes_array[i-1].start_time)
-        input_vector[i][3] = notes_array[i].pitch
-        input_vector[i][4] = notes_array[i].velocity
+        input_vector[i][3] = notes_array[i].pitch / 128
+        input_vector[i][4] = notes_array[i].velocity / 128
 
     return input_vector
 
@@ -208,8 +208,8 @@ def decode_embedding(embedding):
     start_time_previous_note = 0
     end_time_previous_note = 0
     for i in range(len(embedding)):
-        start_time = 0.5 * (start_time_previous_note + embedding[i][2]) + 0.5 * (end_time_previous_note + embedding[i][1])
-        end_time = start_time + embedding[i][0]
+        start_time = 0.5 * 128 * (start_time_previous_note + embedding[i][2]) + 0.5 * 128 * (end_time_previous_note + embedding[i][1])
+        end_time = start_time + embedding[i][0] * 128
         note = pretty_midi.Note(velocity=int(embedding[i][4]), pitch=int(embedding[i][3]), start=float(start_time), end=float(end_time))
         notes_array.append(note)
         start_time_previous_note = start_time
