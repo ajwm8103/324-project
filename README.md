@@ -25,9 +25,14 @@ Produce output midi files using the tokenized embedding Transformer:
 ```console
 $ python evaluate_model.py --embedding token --data data_400
 ```
-Produce output midi files using the continuous embedding Transformer:
+Or using less examples:
 ```console
 $ python evaluate_model.py --embedding token --data data_400 --tiny
+```
+Equivalently, if you want to try the continuous embedding model:
+```console
+$ python evaluate_model.py --embedding continuous --data data_400 --tiny
+$ python train.py --embedding continuous --data data_400 --tiny
 ```
 
 ### Output Files:
