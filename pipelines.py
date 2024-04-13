@@ -1,3 +1,13 @@
+'''
+Much of this code is adapted from the source pipeline used for PerformanceRNN., as their
+code is highly adapted to note_seq and is performant for their large datasets. We have adapted the
+code to work for PyTorch instead of TensorFlow, and have written custom data loading and processing for the transformer with
+the outputs of these pipelines.
+
+[1] https://github.com/magenta/magenta/blob/main/magenta/pipelines/note_sequence_pipelines.py
+
+'''
+
 from note_seq import *
 import copy, numbers, torch, pickle
 from tqdm import TqdmSynchronisationWarning
