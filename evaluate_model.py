@@ -15,6 +15,9 @@ import random
 import note_seq, pretty_midi
 
 def tokenize_note_sequence(note_sequence):
+    '''
+    Set up the encoder and decoder, and return the tokenized sequence
+    '''
     if isinstance(note_sequence, note_seq.NoteSequence):
         note_sequence = [note_sequence]
     perf_extractor = PerformanceExtractor(
@@ -39,6 +42,9 @@ def tokenize_note_sequence(note_sequence):
     return note_sequence
     
 def token_seq_to_midi(token_seq, filename='outputs/token/converted.mid'):
+    '''
+    Convert the tokenized sequence back to a midi file
+    '''
     encoder_decoder = note_seq.OneHotIndexEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
     for index_out in token_seq:
         note_performance = note_seq.Performance(steps_per_second=100)
@@ -54,10 +60,9 @@ def token_seq_to_midi(token_seq, filename='outputs/token/converted.mid'):
     note_seq.sequence_proto_to_midi_file(generated_sequence, filename)
 
 def test_token_model_from_file(emb, args, filename='models/latest_model_1_token.pth', i=0):
-    print('Testing!')
-
-    #print(emb)
-
+    '''
+    Takes in a transformer model and generates midi files for your pleasure
+    '''
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     ntokens = 388  # size of vocabulary
     emsize = 64  # embedding dimension
@@ -91,6 +96,9 @@ def test_token_model_from_file(emb, args, filename='models/latest_model_1_token.
     
 
 def test_model_from_file(dataloader, args, filename="models/latest_model_1.pth"):
+    '''
+    Takes in a transformer model trained on continuous tokens and generates midi files, as will as their inputs (to see how the model works)
+    '''
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     model = nn.Transformer(d_model=5, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
     
@@ -114,6 +122,9 @@ def test_model_from_file(dataloader, args, filename="models/latest_model_1.pth")
     embedding_to_midi(embedding, filename='outputs/continuous/model_output_2.mid')
 
 if __name__ == "__main__":
+    '''
+    This file is for testing models
+    '''
     args = fetch_arguments()
     np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
     data_embedding = load_embedding_from_pickle(args)

@@ -5,6 +5,9 @@ import numpy as np
 from tqdm import tqdm
 
 def load_data(args, data_path='data/maestro-v3.0.0'):
+    '''
+    Load the data from all the MIDI files in the data_path. Put them all in a list.
+    '''
     # Loop through every file in the folder and load each file
     data = []
     i = 0

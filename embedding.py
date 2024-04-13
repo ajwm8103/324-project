@@ -6,23 +6,39 @@ from pipelines import PerformanceExtractor, extract_performances, Quantizer, Tra
 import pickle, torch, os
 from tqdm import tqdm
 
+
+def load_embedding_from_pickle(args):
+    '''
+    Load the embeddings from whichever embedding style the use wants (continuous or discrete/token)
+    '''
+    if args.embedding == 'continuous':
+        return load_continuous(args)
+    elif args.embedding == 'token':
+        return load_token(args)
+
 def load_continuous(args):
-    try:
+    ''' 
+    Load the data and compute the (continuous) embedding for it.
+    There is a lot of data, so we are saving and loading from pickle files whenever possible (loading from pickle is 1.5 seconds to the normal 15 minutes to load and embed).
+    In this function we load the embedding from pickle if it exists, if not, we try to load the raw data from pickle and embbed it if it exists, otherwise, we load the raw data from midi files and embed it.
+    '''
+    try: # Try loading the embedding from pickle
         data_embedding = pickle.load(open(f'data/{args.data}_embedding.p', "rb"))
         args.log("Data Embedding loaded from pickle file")
-    except:
+    except: # No pickled embedding :(
         args.log("No embedding pickle file found, loading raw data and embedding it")
-        try:
+        try: # Try loading the raw data from pickle
             data = pickle.load(open(f'data/{args.data}.p', "rb"))
             args.log("Raw Data loaded from pickle file")
-        except:
+        except: # Load the raw data from midi files
             args.log("No raw data pickle file found, loading raw data from midi files")
             data_path = 'data/maestro-v3.0.0'
             data = load_data(args, data_path)
             args.log("Raw Data loaded")
-            pickle.dump(data, open(f'data/{args.data}.p', "wb"))
+            pickle.dump(data, open(f'data/{args.data}.p', "wb")) # Save the pickled data so we don't have to use the slow midi files again
             args.log("Raw Data saved to pickle file")
 
+        # Now embbed the data
         args.log("Begining Embedding Data")
         if args.embedding == 'token':
             data_embedding = embed(data, mode='train')
@@ -32,13 +48,18 @@ def load_continuous(args):
                 data_embedding.append(embedding(midi_seq))
         args.log("Data Embedding Complete")
         embedding_suffix = '_token' if args.embedding == 'token' else ''
-        pickle.dump(data_embedding, open(f'data/{args.data}{embedding_suffix}_embedding.p', "wb"))
+        pickle.dump(data_embedding, open(f'data/{args.data}{embedding_suffix}_embedding.p', "wb")) # Save the pickled embedding so we don't have to do this again
         args.log("Data Embedding saved to pickle file")
 
     return data_embedding
 
 def load_token(args):
-    # Try loading
+    ''' 
+    Load the data and compute the (discrete) embedding for it.
+    There is a lot of data, so we are saving and loading from pickle files whenever possible (loading from pickle is 1.5 seconds to the normal 15 minutes to load and embed).
+    In this function we load the embedding from pickle if it exists, if not, we try to load the raw data from pickle and embbed it if it exists, otherwise, we load the raw data from midi files and embed it.
+    '''
+
     print("Current working directory:", os.getcwd())
     print(f'data/{args.data}_token.p')
     if os.path.exists(f'data/{args.data}_token.p'):
@@ -58,14 +79,10 @@ def load_token(args):
         
     return data_embedding
 
-def load_embedding_from_pickle(args):
-    if args.embedding == 'continuous':
-        return load_continuous(args)
-    elif args.embedding == 'token':
-        return load_token(args)
-
 def embed(note_seqs, mode='train'):
-    # note_seqs, list of NoteSequence
+    '''
+    Compute the continuous embedding for a list of (midi) note sequences.
+    '''
     stretch_factors = [0.95, 0.975, 1.0, 1.025, 1.05] if mode == 'train' else [1.0]
     hop_size_seconds = 30.0
     # Traponse no more than a major third
@@ -142,16 +159,18 @@ def embed(note_seqs, mode='train'):
     return tensor_data
 
 def embedding(midi_seq):
-    # Convert notes into an embedding for a transformer model:
+    '''
+    Compute the continuous embedding for a single (midi) note sequence.
+    Go from: start_time, end_time, pitch, velocity
+    To: start_time, time_between_notes, time_since_last_note, pitch, velocity
+    '''
     notes_array = np.array(midi_seq.notes)
-
-    # Determine the maximum pitch and velocity for normalization
-
     input_vector = np.zeros((len(notes_array), 5))
-
+    
+    # Embedding of first note
     input_vector[0][0] = (notes_array[0].end_time - notes_array[0].start_time)
     input_vector[0][1] = 0  # Time between notes
-    input_vector[0][2] = 0
+    input_vector[0][2] = 0  # Time since last note
     input_vector[0][3] = notes_array[0].pitch
     input_vector[0][4] = notes_array[0].velocity
 
@@ -164,8 +183,10 @@ def embedding(midi_seq):
 
     return input_vector
 
-
 def embedding_to_midi(embedding, filename='output.mid'):
+    '''
+    Convert the continuous embedding back to a midi file. This function first checks to ensure the format of the data matches the PrettyMidi format, before converting it back.
+    '''
     notes = decode_embedding(embedding)
     for note in notes:
         assert isinstance(note.pitch, int), f"Pitch must be int, got {type(note.pitch)}"
@@ -175,11 +196,14 @@ def embedding_to_midi(embedding, filename='output.mid'):
 
     midi_file = pretty_midi.PrettyMIDI()
     instrument = pretty_midi.Instrument(program=0) # Default the instrument to Piano
-    instrument.notes = notes # TODO: extend?
+    instrument.notes = notes 
     midi_file.instruments.append(instrument)
     midi_file.write(filename)
 
 def decode_embedding(embedding):
+    '''
+    Convert the continuous embedding back to a list of notes. This is the reverse of embedding().
+    '''
     notes_array = []
     start_time_previous_note = 0
     end_time_previous_note = 0
@@ -192,8 +216,10 @@ def decode_embedding(embedding):
         end_time_previous_note = end_time
     return notes_array
 
-
 def decode_embedding_discritized(embedding):
+    '''
+    Convert the continuous embedding back to a list of notes. This is the reverse of embedding().
+    '''
     notes_array = []
     start_time_previous_note = 0
     # print("Embedding shape:", embedding.shape)  # Verify the shape of embedding
@@ -224,6 +250,7 @@ def decode_embedding_discritized(embedding):
     return notes_array
 
 if __name__ == '__main__':
+    # Just some tests used to create the functions above
     from data_loader import load_file
     data_path = 'data/maestro-v3.0.0'
     test_path = '/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
@@ -232,19 +259,13 @@ if __name__ == '__main__':
     midi_seq = load_file(data_path + test_path)
     #print(midi_seq)
 
-    #output = embed([midi_seq])
+    output = embed([midi_seq])
 
     pickle.dump(output, open(f'data/data_token.p', "wb"))
 
     #serialized = output[0].SerializeToString()
     print(len(output), type(output[0]))
 
-    
-    ##print(midi_seq)
     input_vector = embedding(midi_seq)
-
-    # Only 3 Decimals:
-    ##np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
-    ##print(input_vector)
 
     embedding_to_midi(input_vector, 'output.mid')
