@@ -12,11 +12,13 @@ def load_data(args, data_path='data/maestro-v3.0.0'):
         midi_files = [f for f in files if f.endswith('.midi')]
         t = tqdm(midi_files, desc="Loading MIDI files", leave=True)
         for file in t:
+            if i > 10: break
             file_path = os.path.join(subdir, file)
             i += 1
             data.append(load_file(file_path))
             t.set_description(f"Processing {file} ({i}/{len(midi_files)})")
             if args.tiny and i > 1: break
+            
     return np.array(data)
 
 def load_file(file_path):

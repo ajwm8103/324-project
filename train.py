@@ -27,6 +27,7 @@ def fetch_arguments():
     parser.add_argument('--data', type=str, default='data', help='Name of data')
     parser.add_argument('--model', type=str, default='model_1', help='Model name')
     parser.add_argument('--embedding', type=str, default='continuous', help='Embedding style')
+    parser.add_argument('--from_model', type=str, default=None, help='Load model from file')
 
     args = parser.parse_args()
 
@@ -86,6 +87,33 @@ class MidiDatasetToken(Dataset):
         y = self.targets[idx].to(dtype=torch.long, device=self.device)
         return x, y
 
+def initialize_model(args):
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    print("Training on", device)
+    d_model = 5 if args.embedding == 'continuous' else 1
+    model = nn.Transformer(d_model=d_model, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
+    return model, device
+
+def train_for_x_iterations(model, dataloader, device, iterations, args):
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    try:
+        for training_iteration in range(iterations):
+            model.train()
+            t = tqdm(dataloader, desc='Loss: N/A')
+            for src, tgt in t:
+                src, tgt = src.to(device), tgt.to(device)
+                optimizer.zero_grad()
+                output = model(src, tgt)
+                loss = criterion(output, tgt)
+                loss.backward()
+                optimizer.step()
+                t.set_description(f'Loss: {loss.item()}')
+                t.refresh()
+    except KeyboardInterrupt:
+        print("Training interrupted.")
+
+
 def main():
     args = fetch_arguments()
 
@@ -100,31 +128,14 @@ def main():
 
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
-    # Other params
-    d_model = 5 if args.embedding == 'continuous' else 1
-
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
-    print("Training on", device)
-    model = nn.Transformer(d_model=d_model, nhead=args.nhead, num_encoder_layers=args.num_encoder_layers).to(device)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
-
-    try:
-        for training_iteration in range(args.train_count // args.batch_size):
-            model.train()
-            t = tqdm(dataloader, desc='Loss: N/A')
-            for src, tgt in t:
-                src, tgt = src.to(device), tgt.to(device)
-                optimizer.zero_grad()
-                output = model(src, tgt)
-                loss = criterion(output, tgt)
-                loss.backward()
-                optimizer.step()
-                #print(loss.item())
-                t.set_description(f'Loss: {loss.item()}')
-                t.refresh()
-    except KeyboardInterrupt:
-        pass
+    model, device = initialize_model(args)
+    if not(args.from_model == None):
+        print("Load model from file")
+        model.load_state_dict(torch.load(f'models/{args.from_model}.pth', map_location=device))
+        
+    
+    num_iterations_to_train = args.train_count // args.batch_size
+    train_for_x_iterations(model, dataloader, device, num_iterations_to_train, args)
 
     # H2: Save our model:
     torch.save(model.state_dict(), f'models/{args.model}.pth')
