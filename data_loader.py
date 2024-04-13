@@ -17,7 +17,7 @@ def load_data(args, data_path='data/maestro-v3.0.0'):
             i += 1
             data.append(load_file(file_path))
             t.set_description(f"Processing {file} ({i}/{len(midi_files)})")
-            if args.tiny and i > 200: break
+            if args.tiny and i > 4: break
     return np.array(data)
 
 def load_file(file_path):

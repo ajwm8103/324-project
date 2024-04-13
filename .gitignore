@@ -5,6 +5,7 @@
 /__pycache__/*
 *.p
 /data/*.p
+/outputs/*
 /data/data_embedding.p
 /data/data.p
 
