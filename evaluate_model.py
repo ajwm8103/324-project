@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
     if args.embedding == 'token':
 
-        for i in range(10):
+        for i in range(50):
             test_token_model_from_file(data_embedding[i], args, i=i)
     else:
         dataset = MidiDataset(data_embedding, args.seq_len, args, args.stride_length)
