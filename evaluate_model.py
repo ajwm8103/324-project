@@ -7,10 +7,40 @@ from torch.utils.data import DataLoader, Dataset
 import torch.nn.functional as F
 from train import fetch_arguments
 from embedding import load_embedding_from_pickle, embedding_to_midi
-from train import MidiDataset
+from train import MidiDataset, MidiDatasetToken, collate_fn
+from transformer import TransformerModel
 import numpy as np
 import random
+import note_seq, pretty_midi
 
+def test_token_model_from_file(args, filename='models/latest_model_1_token.pth'):
+    print('Testing!')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    ntokens = 388  # size of vocabulary
+    emsize = 64  # embedding dimension
+    d_hid = 128 # dimension of the feedforward network model in ``nn.TransformerEncoder``
+    nlayers = 4  # number of ``nn.TransformerEncoderLayer`` in ``nn.TransformerEncoder``
+    nhead = 4  # number of heads in ``nn.MultiheadAttention``
+    dropout = 0.2  # dropout probability
+    model = TransformerModel(ntokens, emsize, nhead, d_hid, nlayers, dropout).to(device)
+    
+    model.load_state_dict(torch.load(filename, map_location=device))
+    model.to(device)
+
+    src = torch.zeros((10,1), dtype=torch.long, device=device)
+    decoded = model.decode(src, max_len=400)
+    print(decoded)
+
+    # Create decoder, loop over songs and events
+    encoder_decoder = note_seq.OneHotIndexEventSequenceEncoderDecoder(note_seq.PerformanceOneHotEncoding())
+    for index_out in decoded:
+        note_performance = note_seq.Performance(steps_per_second=100)
+        for index in index_out:
+            event = encoder_decoder.class_index_to_event(class_index=index.item(), events=[])
+            note_performance.append(event)
+            #print(index, index_out)
+        #encoder_decoder.decode_event()
+    print(note_performance)
 
 def test_model_from_file(dataloader, args, filename="model_1_long.pth"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -44,7 +74,10 @@ if __name__ == "__main__":
     np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
     data_embedding = load_embedding_from_pickle(args)
 
-    dataset = MidiDataset(data_embedding, args.seq_len, args, args.stride_length)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+    if args.embedding == 'token':
+        test_token_model_from_file(args)
+    else:
+        dataset = MidiDataset(data_embedding, args.seq_len, args, args.stride_length)
+        dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
 
-    test_model_from_file(dataloader, args)
+        test_model_from_file(dataloader, args)

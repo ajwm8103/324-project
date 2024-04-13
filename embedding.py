@@ -39,6 +39,8 @@ def load_continuous(args):
 
 def load_token(args):
     # Try loading
+    print("Current working directory:", os.getcwd())
+    print(f'data/{args.data}_token.p')
     if os.path.exists(f'data/{args.data}_token.p'):
         data_embedding = pickle.load(open(f'data/{args.data}_token.p', "rb"))
         args.log("Data Embedding loaded from pickle file")
@@ -51,7 +53,7 @@ def load_token(args):
         args.log("Begining Embedding Data")
         data_embedding = embed(data, mode='train')
         args.log("Data Embedding Complete")
-        pickle.dump(data_embedding, open(f'data/{args.data}_token_embedding.p', "wb"))
+        pickle.dump(data_embedding, open(f'data/{args.data}_token.p', "wb"))
         args.log("Data Embedding saved to pickle file")
         
     return data_embedding
