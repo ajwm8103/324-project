@@ -99,15 +99,21 @@ def collate_fn(batch):
     targets_padded = pad_sequence(targets, batch_first=True, padding_value=0)
     return inputs_padded, targets_padded
 
-def accuracy(model, data):
+def calculate_loss(model, data):
     criterion = nn.MSELoss()
-    model.eval()
-    for src, tgt in data:
-        src, tgt = src.to(device), tgt.to(device)
-        output = model(src, tgt)
-        loss = criterion(output, tgt)
-        loss.backward()
-    model.train()
+    model.eval() # Switch to evaluation mode
+    k = 0
+    loss_total = 0
+    with torch.no_grad():
+        for src, tgt in data:
+            src, tgt = src.to(device), tgt.to(device)
+            output = model(src, tgt)
+            loss = criterion(output, tgt)
+            loss_total += loss.item()
+            k += 1
+            if k > 30: break
+    model.train() # Switch back to training mode
+    return loss_total / k
 
 def train_continuous(args):
     # Get embedding
@@ -144,13 +150,14 @@ def train_continuous(args):
                 loss.backward()
                 optimizer.step()
                 #print(loss.item())
-                t.set_description(f'Loss: {loss.item()}')
-                t.refresh()
+                
                 iter_count += 1
                 if iter_count % 100 == 0:
+                    t.set_description(f'Loss: {loss.item()}')
+                    t.refresh()
                     iters.append(iter_count)
-                    ta = accuracy(model, dataloader_train)
-                    va = accuracy(model, dataloader_test)
+                    ta = calculate_loss(model, dataloader_train)
+                    va = calculate_loss(model, dataloader_test)
                     train_loss.append(float(loss))
                     train_acc.append(ta)
                     test_acc.append(va)
@@ -175,7 +182,7 @@ def train_continuous(args):
     plt.title("Loss over iterations")
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
-    plt.savefig('figures/train loss.png')
+    plt.savefig('figures/continuous/train loss.png')
 
     plt.figure()
     plt.plot(iters[:len(train_acc)], train_acc)
@@ -184,19 +191,39 @@ def train_continuous(args):
     plt.xlabel("Iterations")
     plt.ylabel("Loss")
     plt.legend(["Train", "Test"])
-    plt.savefig('figures/train test acc.png')
+    plt.savefig('figures/continuous/train test acc.png')
 
 
-    # Time to try training with a transformer model
+def calculate_loss_token(model, data):
+    criterion = nn.CrossEntropyLoss()
+    model.eval() # Switch to evaluation mode
+    k = 0
+    loss_total = 0
+    with torch.no_grad():
+        for src, tgt in data:
+            src, tgt = src.to(device), tgt.to(device)
+            output = model(src)
+            output_flat = output.view(-1, 388)
+            loss = criterion(output_flat, tgt.reshape(-1).contiguous())
+            loss_total += loss.item()
+
+            k += 1
+            if k > 30: break
+    model.train() # Switch back to training mode
+    return loss_total / k
 
 def train_token(args):
     # Get embedding
     data_embedding = load_embedding_from_pickle(args)
 
-    # Dataset
-    dataset = MidiDatasetToken(data_embedding, args.seq_len, args, args.stride_length)
+    data_train, data_test = train_test_split(data_embedding, test_size=0.10, random_state=42)
 
-    train_data = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, drop_last=True, collate_fn=collate_fn)
+    # Dataset
+    dataset_train = MidiDatasetToken(data_train, args.seq_len, args, args.stride_length)
+    dataset_test= MidiDatasetToken(data_test, args.seq_len, args, args.stride_length)
+
+    dataloader_train = DataLoader(dataset_train, batch_size=args.batch_size, shuffle=True, drop_last=True, collate_fn=collate_fn)
+    dataloader_test = DataLoader(dataset_test, batch_size=args.batch_size, shuffle=True, drop_last=True, collate_fn=collate_fn)
 
     # Other params
     d_model = 5 if args.embedding == 'continuous' else 1
@@ -205,9 +232,9 @@ def train_token(args):
     print("Training on", device)
     ntokens = 388  # size of vocabulary
     emsize = 64  # embedding dimension
-    d_hid = 64 # dimension of the feedforward network model in ``nn.TransformerEncoder``
-    nlayers = 2  # number of ``nn.TransformerEncoderLayer`` in ``nn.TransformerEncoder``
-    nhead = 2  # number of heads in ``nn.MultiheadAttention``
+    d_hid = 128 # dimension of the feedforward network model in ``nn.TransformerEncoder``
+    nlayers = 4  # number of ``nn.TransformerEncoderLayer`` in ``nn.TransformerEncoder``
+    nhead = 4  # number of heads in ``nn.MultiheadAttention``
     dropout = 0.2  # dropout probability
     model = TransformerModel(ntokens, emsize, nhead, d_hid, nlayers, dropout).to(device)
     criterion = nn.CrossEntropyLoss()
@@ -221,11 +248,13 @@ def train_token(args):
 
     try:
         model.train()
-        t = tqdm(enumerate(train_data), desc='Loss1: N/A', total=args.train_count // args.batch_size)
-        for epoch in range(20):
+        t = tqdm(enumerate(dataloader_train), desc='Loss1: N/A', total=args.train_count // args.batch_size)
+        iters, train_loss, train_acc, test_acc = [], [], [], []
+        iter_count = 0
+        for epoch in range(10000):
             for batch, (data, targets) in t:
                 data, targets = data.to(device), targets.to(device)
-                
+                iter_count += 1
             
                 output = model(data)
                 output_flat = output.view(-1, ntokens)
@@ -237,18 +266,43 @@ def train_token(args):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
                 optimizer.step()
 
-                t.set_description(f'Loss: {loss.item()}')
-                t.refresh()
-            torch.save(model.state_dict(), f'models/latest_{args.model}.pth')
+                if iter_count % 100 == 0:
+                    t.set_description(f'Loss: {loss.item()}')
+                    t.refresh()
+                    iters.append(iter_count)
+                    ta = calculate_loss_token(model, dataloader_train)
+                    va = calculate_loss_token(model, dataloader_test)
+                    train_loss.append(float(loss))
+                    train_acc.append(ta)
+                    test_acc.append(va)
+                    print(iter_count, epoch, "Loss:", float(loss), "Train Acc:", ta, "Val Acc:", va)
+
+            torch.save(model.state_dict(), f'models/latest_{args.model}_token.pth')
     except KeyboardInterrupt:
         pass
 
     # H2: Save our model:
-    torch.save(model.state_dict(), f'models/{args.model}.pth')
+    torch.save(model.state_dict(), f'models/{args.model}_token.pth')
+
+    plt.figure()
+    plt.plot(iters[:len(train_loss)], train_loss)
+    plt.title("Loss over iterations")
+    plt.xlabel("Iterations")
+    plt.ylabel("Loss")
+    plt.savefig('figures/token/train loss.png')
+
+    plt.figure()
+    plt.plot(iters[:len(train_acc)], train_acc)
+    plt.plot(iters[:len(test_acc)], test_acc)
+    plt.title("Accuracy over iterations")
+    plt.xlabel("Iterations")
+    plt.ylabel("Loss")
+    plt.legend(["Train", "Test"])
+    plt.savefig('figures/token/train test acc.png')
 
     model.eval()
     with torch.no_grad():
-        src, tgt = next(iter(train_data))
+        src, tgt = next(iter(dataloader_train))
         src, tgt = src.to(device), tgt.to(device)
         output = model(src)  # tgt[:-1] used as target input to predict tgt[1:]
         print("Sample input:", src[0])
@@ -259,7 +313,8 @@ def train_token(args):
         src = torch.zeros((10,1), dtype=torch.long, device=device)
         #src = torch.randint(0, 388, (10, 32))  # Example input data [seq_len, batch_size]
         src_mask = model.generate_square_subsequent_mask(src.size(0)).to(model.device)
-        decoded = model.decode(src)
+        decoded = model.decode(src, max_len=400)
+        print(decoded)
 
 def main():
     args = fetch_arguments()

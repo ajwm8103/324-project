@@ -149,12 +149,12 @@ class TransformerModel(nn.Module):
         ys = src
         for i in range(max_len-1):
             out = self.forward(ys, self.generate_square_subsequent_mask(ys.size(0)).to(self.device))
-            print(out.shape)
-            
-            prob = self.linear(out)
-            _, next_word = torch.max(prob[-1], dim=1)
-            next_word = next_word.unsqueeze(0)
-            ys = torch.cat([ys, next_word.type_as(src.data)], dim=0)
+            #print(out.shape)
+            prob = out[:, -1, :]
+            next_word = torch.argmax(prob, dim=-1)
+            #print(next_word, next_word.shape)
+            next_word = next_word.unsqueeze(1)
+            ys = torch.cat([ys, next_word.type_as(src.data)], dim=1)
         return ys
 
     def generate_square_subsequent_mask(self, sz):
